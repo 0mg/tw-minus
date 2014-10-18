@@ -41,4 +41,23 @@
     var header = heads.join(",");
     return header;
   });
+
+  // for IE11
+  if (!("readAsBinaryString" in FileReader.prototype)) {
+    FileReader.prototype.readAsBinaryString = function(file) {
+      var that = this;
+      var fr = new FileReader;
+      fr.addEventListener("load", function() {
+        for (var buf = "", i = 0; i < fr.result.byteLength; ++i) {
+          buf += String.fromCharCode(new Uint8Array(fr.result)[i]);
+        }
+        Object.defineProperty(that, "result",
+          { get: function() { return buf; } });
+        var load = document.createEvent("Event");
+        load.initEvent("load", false, false);
+        that.dispatchEvent(load);
+      });
+      fr.readAsArrayBuffer(file);
+    };
+  }
 })();
