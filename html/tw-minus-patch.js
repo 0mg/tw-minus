@@ -63,15 +63,15 @@
   if (!+new Date("Tue Mar 21 20:50:14 +0000 2006")) {
     var Dative = Date;
     Date = function Date(a0) {
-      var fp = Function.prototype;
       var args = [].slice.call(arguments);
       if (this.constructor !== Date) {
-        return fp.apply(Dative, args);
+        return Dative.apply(null, args);
       }
-      if (args.length === 1 && typeof a0 === "string") {
+      if (args.length === 1 && typeof a0 === "string" &&
+        /^\w{3} \w{3} \d\d \d\d:\d\d:\d\d \+\d{4} \d+$/.test(a0)) {
         args[0] = a0.slice(-4) + a0.slice(0, -4);
       }
-      var F = fp.bind.apply(Dative, [Dative].concat(args));
+      var F = Function.prototype.bind.apply(Dative, [,].concat(args));
       F.prototype = Dative.prototype;
       return new F;
     };
