@@ -60,4 +60,23 @@
       fr.readAsArrayBuffer(file);
     };
   }
+  if (!+new Date("Tue Mar 21 20:50:14 +0000 2006")) {
+    var Dative = Date;
+    Date = function Date(a0) {
+      var fp = Function.prototype;
+      var args = [].slice.call(arguments);
+      if (this.constructor !== Date) {
+        return fp.apply(Dative, args);
+      }
+      if (args.length === 1 && typeof a0 === "string") {
+        args[0] = a0.slice(-4) + a0.slice(0, -4);
+      }
+      var F = fp.bind.apply(Dative, [Dative].concat(args));
+      F.prototype = Dative.prototype;
+      return new F;
+    };
+    Object.getOwnPropertyNames(Dative).forEach(function(key) {
+      if (key !== "prototype") Date[key] = Dative[key];
+    });
+  }
 })();
