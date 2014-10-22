@@ -99,7 +99,9 @@ var sendTwitter = function(params, browser) {
   } else {
     postqry = {};
   }
-  var headers = {};
+  var headers = {
+    "Accept-Encoding": params.headers["accept-encoding"]
+  };
   headers["content-type"] = params.headers["content-type"];
   headers.Authorization = P.getOAuthHeader(
     params.method,
