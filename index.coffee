@@ -13,7 +13,7 @@ Header = (filename) ->
   if arr.length <= 1
     ext = "txt"
   else
-    ext = arr[arr.length - 1].toLowerCase()
+    ext = arr[-1..].toLowerCase()
   switch ext
     when "html"
       ctype = "text/html; charset=utf-8"
@@ -29,11 +29,11 @@ Header = (filename) ->
     else
       ctype = "text/plain; charset=utf-8"
   {
-    "Content-Type": ctype
-    "X-Content-Type-Options": "nosniff"
-    "X-Frame-Options": "deny"
-    "X-XSS-Protection": "1; mode=block"
-    "Strict-Transport-Security": "max-age=2592000"
+    "content-type": ctype
+    "x-content-type-options": "nosniff"
+    "x-frame-options": "deny"
+    "x-xss-protection": "1; mode=block"
+    "strict-transport-security": "max-age=2592000"
   }
 
 # Server Response -> to browser
@@ -63,8 +63,6 @@ srvres =
     tokens = (String params.headers.authorization).split ","
     if tokens.length is 3
       [params.oauth_phase, params.token, params.token_secret] = tokens
-    if "content-type" not of params.headers
-      params.headers["content-type"] = ""
     params.data = rcvdata
     sendTwitter params, res
 
@@ -77,9 +75,9 @@ sendTwitter = (params, browser) ->
   else
     postqry = {}
   headers =
-    "Accept-Encoding": params.headers["accept-encoding"]
+    "accept-encoding": params.headers["accept-encoding"]
   headers["content-type"] = params.headers["content-type"]
-  headers.Authorization = P.getOAuthHeader(
+  headers["authorization"] = P.getOAuthHeader(
     params.method,
     url,
     postqry,
@@ -96,7 +94,7 @@ sendTwitter = (params, browser) ->
     browser.writeHead res.statusCode, res.headers
     res.on "data", (d) ->
       browser.write(d)
-    res.on "end", () ->
+    res.on "end", ->
       browser.end()
   req.write params.data
   req.end()
@@ -108,14 +106,13 @@ http.createServer (req, res) ->
     return
   data = new Buffer ""
   filename = F.fixURLtoFileName req.url
-  if F.isRealFileName filename
+  if filename in F.realfilenames
     # File request
-    filename = filename
   else if req.method isnt "GET" or
   req.headers["x-requested-with"] is "XMLHttpRequest"
     # XHR request
     req.on "data", (d) -> data = Buffer.concat [data, d]
-    req.on "end", () -> srvres.xhr req, res, data
+    req.on "end", -> srvres.xhr req, res, data
     return
   else if /^\/oauth\/authorize($|\?)/.test req.url
     # Access to Special URL

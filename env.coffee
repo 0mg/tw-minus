@@ -2,12 +2,9 @@
 
 # Files in server .html .js
 module.exports.F = F = {}
-F.index_html_path = "./html/index.html"
 F.fixURLtoFileName = (path) ->
   "./html" + path.replace /\/$/, "/index.html"
-F.isRealFileName = (filename) ->
-  F.realfilenames.some (realname) ->
-    filename is realname
+F.index_html_path = "./html/index.html"
 F.realfilenames = [
   F.index_html_path
   "./html/tw-minus.user.js"
