@@ -50,7 +50,9 @@ var Header = function(filename) {
 // Server Response -> to browser
 var srvres = {
   main: function(req, res, data, filename) {
-    res.writeHead(200, new Header(filename));
+    var header = new Header(filename);
+    header["cache-control"] = "private, max-age=900";
+    res.writeHead(200, header);
     res.write(data);
     res.end();
   },
