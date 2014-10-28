@@ -1949,6 +1949,13 @@ V.main.showPage.on1 = function(hash, q, my) {
   case "users":
     D.q("#main").add(it.newUsers(my));
     break;
+  case "friends":
+    var ws = new WebSocket("ws://localhost:3000");
+    ws.addEventListener("open", function() {
+      D.q("#main").add(D.ce("li").add(D.ct("WS opened")));
+      ws.send("MO");
+    });
+    break;
   case "lists":
     it.showLists(API.urls.lists.all()() + "?" + q +
       "&reverse=true&cursor=-1", my);

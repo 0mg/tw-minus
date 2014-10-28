@@ -133,8 +133,53 @@ var sendTwitter = function(params, browser) {
   req.end();
 };
 
+// User streams
+var streamTwitter = function(params, browser) {
+  var url = "https://userstream.twitter.com" + params.url;
+  var urlo = URL.parse(url, true);
+  var postqry;
+  if (params.headers["content-type"] === "application/x-www-form-urlencoded") {
+    postqry = URL.parse("?" + params.data, true).query;
+  } else {
+    postqry = {};
+  }
+  var headers = {
+    "accept-encoding": params.headers["accept-encoding"]
+  };
+  headers["content-type"] = params.headers["content-type"];
+  headers["authorization"] = P.getOAuthHeader(
+    params.method,
+    url,
+    postqry,
+    params.oauth_phase,
+    params.token,
+    params.token_secret
+  );
+  var options = {
+    host: urlo.host,
+    path: params.url,
+    method: params.method,
+    headers: headers
+  };
+  var req = https.request(options, function(res) {
+    browser.writeHead(res.statusCode, res.headers);
+    res.on("data", function(d) {
+      browser.write(d);
+    });
+    res.on("end", function() {
+      browser.end();
+    });
+  });
+  req.write(params.data);
+  req.end();
+};
+
 // Server listen <- request from browser
-http.createServer(function(req, res) {
+var server = http.createServer();
+server.listen(L.PORT);
+
+// Server <- request from browser
+server.on("request", function(req, res) {
   if (L.twMinusIsOnWeb && req.headers["x-forwarded-proto"] !== "https") {
     srvres.forceHTTPS(req, res, "");
     return;
@@ -156,6 +201,8 @@ http.createServer(function(req, res) {
     // Access to Special URL
     srvres.goAuthorize(req, res);
     return;
+  } else if (/^\/1\.1\/user\.json($|\?)/.test(req.url)) {
+    return;
   } else {
     // 404 Not Found
     filename = F.index_html_path;
@@ -167,4 +214,21 @@ http.createServer(function(req, res) {
       srvres.main(req, res, data, filename);
     }
   });
-}).listen(L.PORT);
+});
+
+// Server <-> WebSocket browser
+server.on("upgrade", function(res, socket, head) {
+  console.log(head);
+  var crypto = require("crypto");
+  var magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  var inkey = res.headers["sec-websocket-key"];
+  var outkey = crypto.createHash("sha1").update(inkey + magic).digest("base64");
+  var mes = [
+    "HTTP/1.1 101 WebSocket",
+    "upgrade: websocket",
+    "connection: upgrade",
+    "sec-websocket-accept: " + outkey,
+    ""
+  ].join("\r\n") + "\r\n";
+  socket.write(mes);
+});
