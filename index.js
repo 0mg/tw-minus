@@ -52,6 +52,7 @@ var srvres = {
   main: function(req, res, data, filename) {
     var header = new Header(filename);
     header["cache-control"] = "private, max-age=900";
+    header["content-length"] = data.length;
     res.writeHead(200, header);
     res.write(data);
     res.end();
