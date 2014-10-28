@@ -39,11 +39,11 @@ var Header = function(filename) {
     break;
   }
   return {
-    "Content-Type": ctype,
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "deny",
-    "X-XSS-Protection": "1; mode=block",
-    "Strict-Transport-Security": "max-age=2592000"
+    "content-type": ctype,
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "deny",
+    "x-xss-protection": "1; mode=block",
+    "strict-transport-security": "max-age=2592000"
   };
 };
 
@@ -64,16 +64,16 @@ var srvres = {
   },
   goAuthorize: function(req, res) {
     var header = new Header(".txt");
-    header["Location"] = L.TW_API_URL + req.url;
+    header["location"] = L.TW_API_URL + req.url;
     res.writeHead(302, header);
-    res.write("redirect to [Authorize app] page");
+    res.write(header["location"]);
     res.end();
   },
   forceHTTPS: function(req, res, err) {
     var header = new Header(".txt");
-    header["Location"] = L.TW_MINUS_URL + req.url;
+    header["location"] = L.TW_MINUS_URL + req.url;
     res.writeHead(302, header);
-    res.write("redirect to HTTPS");
+    res.write(header["location"]);
     res.end();
   },
   xhr: function(req, res, rcvdata) {
@@ -103,10 +103,10 @@ var sendTwitter = function(params, browser) {
     postqry = {};
   }
   var headers = {
-    "Accept-Encoding": params.headers["accept-encoding"]
+    "accept-encoding": params.headers["accept-encoding"]
   };
   headers["content-type"] = params.headers["content-type"];
-  headers.Authorization = P.getOAuthHeader(
+  headers["authorization"] = P.getOAuthHeader(
     params.method,
     url,
     postqry,
