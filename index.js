@@ -232,13 +232,15 @@ server.on("upgrade", function(req, skt, head) {
   skt.write(mes);
   skt.on("data", function(fm) {
     // EXTRACT MESSAGE from FRAME
-    var idx = 1;
-    var ml = fm[idx];
+    var idx = 0;
+    var b1 = fm[idx];
+    idx += 1;
+    var b2 = fm[idx];
     //    1 1111111 | bit
     // Mask Length  | mean
-    var masking = ml >>> 7;
+    var masking = b2 >>> 7;
     var mask = 0;
-    var leng = ml & 0x7f;
+    var leng = b2 & 0x7f;
     var length = 0;
     if (leng === 127) {
       // 64bit = 8B
@@ -267,5 +269,20 @@ server.on("upgrade", function(req, skt, head) {
       msg[i] = mskmsg[i] ^ mask[i % 4];
     }
     console.log(msg.toString("utf-8"));
+    sendToBrowser(skt, fm, outkey);
   });
 });
+
+var sendToBrowser = function(skt, fm, outkey) {
+  var msg = new Buffer("Yes, I am server!");
+  var length = msg.length;
+  var b1 = new Buffer([fm[0]]);
+  var masking = 0;
+  var leng = 126;
+  var b2 = new Buffer([(masking << 7) | leng]);
+  var lengthbox = new Buffer(2);
+  lengthbox.writeUInt16BE(length, 0);
+  var sendfm = Buffer.concat([b1, b2, lengthbox, msg]);
+  console.log(sendfm);
+  skt.write(sendfm);
+};

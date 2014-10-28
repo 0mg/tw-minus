@@ -1951,13 +1951,22 @@ V.main.showPage.on1 = function(hash, q, my) {
     break;
   case "friends":
     var ws = new WebSocket("ws://localhost:3000");
+    var insw = function(msg) {
+      D.q("#main").ins(D.ce("hr"), msg instanceof Node ? msg : D.ct(msg));
+    };
     ws.addEventListener("open", function() {
-      D.q("#main").add(D.ce("li").add(D.ct("WS opened")));
+      insw("WS opened");
       ws.send("/1.1/user.json");
     });
-    ws.addEventListener("message", function(msg) {
-      alert(msg);
-    })
+    ws.addEventListener("message", function(ev) {
+      var data;
+      try {
+        data = O.htmlify(JSON.parse(ev));
+      } catch(e) {
+        data = ev;
+      }
+      insw(ev.data);
+    });
     break;
   case "lists":
     it.showLists(API.urls.lists.all()() + "?" + q +
