@@ -1950,23 +1950,48 @@ V.main.showPage.on1 = function(hash, q, my) {
     D.q("#main").add(it.newUsers(my));
     break;
   case "friends":
-    var ws = new WebSocket("ws://localhost:3000");
+    var url = "/1.1/user.json?stringify_friend_ids=true";
+    var ws = new WebSocket("ws://" + location.host + url);
     var insw = function(msg) {
       D.q("#main").ins(D.ce("hr"), msg instanceof Node ? msg : D.ct(msg));
     };
+    var timer;
     ws.addEventListener("open", function() {
       insw("WS opened");
-      ws.send("/1.1/user.json");
+      var auth = X.getOAuthHeader("ws", url, {}, url.oauthPhase);
+      ws.send(JSON.stringify({
+        url: url,
+        headers: {
+          authorization: auth
+        }
+      }));
+      timer = setInterval(function() {
+        ws.send(JSON.stringify("keep-alive"));
+      }, 10 * 1000);
+    });
+    ws.addEventListener("close", function() {
+      insw("WS closed");
+      clearInterval(timer);
     });
     ws.addEventListener("message", function(ev) {
       var data;
       try {
-        data = O.htmlify(JSON.parse(ev));
+        data = JSON.parse(ev.data);
+        if (["rt", "tweet", "dmsg"].indexOf(API.getType(data)) >= 0) {
+          data = V.main.newTweet(data, my);
+        } else {
+          data = O.htmlify(data);
+        }
       } catch(e) {
-        data = ev;
+        data = ev.data;
       }
-      insw(ev.data);
+      insw(data);
     });
+    var stopbtn = D.ce("button").add(D.ct("CLOSE"));
+    stopbtn.addEventListener("click", function() {
+      ws.close();
+    });
+    D.q("#subaction-inner-1").add(stopbtn);
     break;
   case "lists":
     it.showLists(API.urls.lists.all()() + "?" + q +
@@ -3222,6 +3247,7 @@ V.misc.showCursorPage = function(data) {
 
 // show xhr state tip
 V.misc.onXHRStart = function(method, url, q) {
+  if (document.readyState !== "complete") return;
   var loading = D.ce("li").sa("class", "xhr-state").add(D.ct("loading.."));
   loading.classList.add("loading");
   D.q("#xhr-statuses").add(loading);
@@ -3229,6 +3255,7 @@ V.misc.onXHRStart = function(method, url, q) {
   return loading;
 };
 V.misc.onXHREnd = function(success, xhr, method, url, q) {
+  if (document.readyState !== "complete") return;
   var s = D.q(".xhr-state.loading");
   if (!s) s = V.misc.onXHRStart(method, url, q);
   s.classList.remove("loading");
