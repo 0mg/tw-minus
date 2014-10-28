@@ -217,11 +217,10 @@ server.on("request", function(req, res) {
 });
 
 // Server <-> WebSocket browser
-server.on("upgrade", function(res, socket, head) {
-  console.log(head);
+server.on("upgrade", function(req, skt, head) {
   var crypto = require("crypto");
   var magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-  var inkey = res.headers["sec-websocket-key"];
+  var inkey = req.headers["sec-websocket-key"];
   var outkey = crypto.createHash("sha1").update(inkey + magic).digest("base64");
   var mes = [
     "HTTP/1.1 101 WebSocket",
@@ -230,5 +229,43 @@ server.on("upgrade", function(res, socket, head) {
     "sec-websocket-accept: " + outkey,
     ""
   ].join("\r\n") + "\r\n";
-  socket.write(mes);
+  skt.write(mes);
+  skt.on("data", function(fm) {
+    // EXTRACT MESSAGE from FRAME
+    var idx = 1;
+    var ml = fm[idx];
+    //    1 1111111 | bit
+    // Mask Length  | mean
+    var masking = ml >>> 7;
+    var mask = 0;
+    var leng = ml & 0x7f;
+    var length = 0;
+    if (leng === 127) {
+      // 64bit = 8B
+      idx += 1;
+      length = fm.readDoubleBE(idx);
+      idx += 8;
+    } else if (leng === 126) {
+      // 16bit = 2B
+      idx += 1;
+      length = fm.readUInt16BE(idx);
+      idx += 2;
+    } else {
+      // 7bit = (1B)
+      length = fm[idx] & 0x7f;
+      idx += 1;
+    }
+    if (masking) {
+      // 4B
+      mask = fm.slice(idx, idx + 4);
+      idx += 4;
+    }
+    // UN-MASKING
+    var mskmsg = fm.slice(idx);
+    var msg = new Buffer(length);
+    for (var i = 0; i < length; ++i) {
+      msg[i] = mskmsg[i] ^ mask[i % 4];
+    }
+    console.log(msg.toString("utf-8"));
+  });
 });

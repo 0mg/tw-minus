@@ -1953,8 +1953,11 @@ V.main.showPage.on1 = function(hash, q, my) {
     var ws = new WebSocket("ws://localhost:3000");
     ws.addEventListener("open", function() {
       D.q("#main").add(D.ce("li").add(D.ct("WS opened")));
-      ws.send("MO");
+      ws.send("/1.1/user.json");
     });
+    ws.addEventListener("message", function(msg) {
+      alert(msg);
+    })
     break;
   case "lists":
     it.showLists(API.urls.lists.all()() + "?" + q +
