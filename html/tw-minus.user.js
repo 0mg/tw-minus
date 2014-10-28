@@ -253,10 +253,9 @@ P.sha1.calc = function sha1calc(block, hh) {
 
 // OAuth
 P.oauth = {};
-P.oauth.consumer_key = "e5uRPFBMQJcwfbEcPnwiw";
+P.oauth.consumer_key = "";
 P.oauth.consumer_secret = "";
 P.oauth.sha = function(sha_text, sha_key) {
-  //return new jsSHA(sha_text,"TEXT").getHMAC(sha_key,"TEXT","SHA-1","B64");
   return btoa(P.hmac(P.sha1)(sha_key, sha_text));
 };
 P.oauth.enc = function enc(s) {
