@@ -4,7 +4,6 @@ A Twitter client.
 
 * author: [0mg](http://0mg.github.io/)
 * source code: https://github.com/0mg/tw-minus.git
-* license: [CC BY-NC-SA 4.0](http://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 ## Get ready
 
@@ -17,7 +16,7 @@ There are 2 installation types.
 ## Install | for Heroku
 
 * install [Git](http://www.git-scm.com/). --*git.exe*
-* sign up [Heroku](https://www.heroku.com/).
+* sign up [Heroku](https://www.heroku.com/). --*[heroku.exe](https://toolbelt.heroku.com/)*
 
 1. Heroku: create Heroku app.
     * app name = {myapp}
