@@ -197,36 +197,35 @@ var streamTwitter = function(params, browser) {
   req.write(params.data);
   req.end();
   console.log("req -> Tw");
-  reqTwing = req;
+  return req;
 };
 
 // Server listen <- request from browser
 var server = http.createServer();
 server.listen(L.PORT);
 
-// destroy SOCKET & TWITTER STREAMING
-var wsocket;
-var reqTwing;
-var stopWS = function() {
-  console.log("# stopWS");
-  if (wsocket) {
-    wsocket.end();
-    wsocket = null;
-    console.log("  skt.end() ->");
-  }
-  if (reqTwing) {
-    reqTwing.abort();
-    reqTwing = null;
-    console.log("  reqTW.abort() ->");
-  }
-  console.log("  " + Date.now());
-};
-
 // Server <-> WebSocket browser
 server.on("upgrade", function(req, skt, head) {
-  // Server <- browser new WebSocket(..)
   console.log("<<< new WebSocket");
-  stopWS();
+  // destroy SOCKET & TWITTER STREAMING
+  var stopWS = function(reqTwing, wsocket) {
+    console.log("# stopWS");
+    if (wsocket) {
+      wsocket.end();
+      wsocket = null;
+      console.log("  skt.end() ->");
+    }
+    if (reqTwing) {
+      reqTwing.abort();
+      reqTwing = null;
+      console.log("  reqTW.abort() ->");
+    }
+    console.log("  " + Date.now());
+  };
+  // Server <- browser new WebSocket(..)
+  var reqTwing;
+  var wsocket;
+  stopWS(reqTwing, wsocket);
   var crypto = require("crypto");
   var magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   var inkey = req.headers["sec-websocket-key"];
@@ -244,25 +243,25 @@ server.on("upgrade", function(req, skt, head) {
   // listen <- browser websocket.send(..)
   skt.on("error", function() {
     console.log("skt error");
-    stopWS()
+    stopWS(reqTwing, wsocket);
   });
   skt.on("timeout", function() {
     console.log("skt timeout");
-    stopWS();
+    stopWS(reqTwing, wsocket);
   });
   skt.on("end", function() {
     console.log("skt end");
-    stopWS();
+    stopWS(reqTwing, wsocket);
   });
   skt.on("close", function() {
     console.log("skt close ------------------------------------");
-    stopWS();
+    stopWS(reqTwing, wsocket);
   });
   skt.on("data", function(fm) {
     console.log("<-- ws.send()");
     var wsfo = decodeWSFrame(fm);
     if (!wsfo) {
-      stopWS();
+      stopWS(reqTwing, wsocket);
       return;
     }
     // GO TWITTER STREAM
@@ -275,7 +274,7 @@ server.on("upgrade", function(req, skt, head) {
       params.token = tokens[1];
       params.token_secret = tokens[2];
     }
-    streamTwitter(params, skt);
+    reqTwing = streamTwitter(params, skt);
   });
 });
 
