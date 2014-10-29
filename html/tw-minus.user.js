@@ -1951,7 +1951,9 @@ V.main.showPage.on1 = function(hash, q, my) {
     break;
   case "friends":
     var url = "/1.1/user.json?stringify_friend_ids=true";
-    var ws = new WebSocket("ws://" + location.host + url);
+    var ws = new WebSocket(
+      (location.protocol === "http:" ? "ws:" : "wss:") + 
+      "//" + location.host + url);
     var insw = function(msg) {
       D.q("#main").ins(msg instanceof Node ? msg : D.ct(msg));
     };
