@@ -103,7 +103,8 @@ var sendTwitter = function(params, browser) {
     postqry = {};
   }
   var headers = {
-    "accept-encoding": params.headers["accept-encoding"]
+    "accept-encoding": params.headers["accept-encoding"],
+    "x-forwarded-for": params.socket.remoteAddress
   };
   headers["content-type"] = params.headers["content-type"];
   headers["authorization"] = P.getOAuthHeader(
