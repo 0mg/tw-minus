@@ -1953,11 +1953,10 @@ V.main.showPage.on1 = function(hash, q, my) {
     var url = "/1.1/user.json?stringify_friend_ids=true";
     var ws = new WebSocket("ws://" + location.host + url);
     var insw = function(msg) {
-      D.q("#main").ins(D.ce("hr"), msg instanceof Node ? msg : D.ct(msg));
+      D.q("#main").ins(msg instanceof Node ? msg : D.ct(msg));
     };
-    var timer;
     ws.addEventListener("open", function() {
-      insw("WS opened");
+      insw(D.ce("h3").add(D.ct("WS opened")));
       var auth = X.getOAuthHeader("ws", url, {}, url.oauthPhase);
       ws.send(JSON.stringify({
         url: url,
@@ -1965,13 +1964,9 @@ V.main.showPage.on1 = function(hash, q, my) {
           authorization: auth
         }
       }));
-      timer = setInterval(function() {
-        ws.send(JSON.stringify("keep-alive"));
-      }, 10 * 1000);
     });
     ws.addEventListener("close", function() {
-      insw("WS closed");
-      clearInterval(timer);
+      insw(D.ce("h3").add(D.ct("WS closed")));
     });
     ws.addEventListener("message", function(ev) {
       var data;
@@ -1987,7 +1982,7 @@ V.main.showPage.on1 = function(hash, q, my) {
       }
       insw(data);
     });
-    var stopbtn = D.ce("button").add(D.ct("CLOSE"));
+    var stopbtn = D.ce("button").add(D.ct("stop"));
     stopbtn.addEventListener("click", function() {
       ws.close();
     });

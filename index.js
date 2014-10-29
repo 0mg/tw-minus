@@ -135,8 +135,6 @@ var sendTwitter = function(params, browser) {
 };
 
 // User streams
-var keepalive;
-var reqTwing;
 var streamTwitter = function(params, browser) {
   var url = "https://userstream.twitter.com" + params.url;
   var urlo = URL.parse(url, true);
@@ -165,29 +163,181 @@ var streamTwitter = function(params, browser) {
     headers: headers
   };
   var req = https.request(options, function(res) {
+    console.log("<- Tw res");
     var entry = new Buffer("");
     res.on("data", function(d) {
+      var fixds = d.toString("utf-8").replace(/\r\n/g, "");
       entry = Buffer.concat([entry, d]);
-      console.log("Listening Twitter Streaming | " + Date.now());
+      console.log("<- Tw Stream | " +
+        fixds.slice(0,10) + "..." + fixds.slice(-10));
+      if (res.statusCode !== 200) {
+        browser.write(encodeWSFrame(new Buffer(JSON.stringify(res.headers))));
+        browser.write(encodeWSFrame(d));
+        return;
+      }
       try {
         JSON.parse(entry.toString("utf-8"));
         browser.write(encodeWSFrame(entry));
+        console.log("-> skt.write");
         entry = new Buffer("");
-      } catch(e) {}
+      } catch(e) {
+        if (fixds.trim() === "") {
+          browser.write(encodeWSFrame("."));
+          console.log("-> skt.write");
+          entry = new Buffer("");
+        }
+      }
     });
     res.on("end", function() {
       browser.end();
     });
   });
+  req.on("error", function() { console.log("reqTW error"); });
+  req.on("close", function() { console.log("reqTW close"); });
   req.write(params.data);
   req.end();
+  console.log("req -> Tw");
   reqTwing = req;
-  return req;
 };
 
 // Server listen <- request from browser
 var server = http.createServer();
 server.listen(L.PORT);
+
+// destroy SOCKET & TWITTER STREAMING
+var wsocket;
+var reqTwing;
+var stopWS = function() {
+  console.log("# stopWS");
+  if (wsocket) {
+    wsocket.end();
+    wsocket = null;
+    console.log("  skt.end() ->");
+  }
+  if (reqTwing) {
+    reqTwing.abort();
+    reqTwing = null;
+    console.log("  reqTW.abort() ->");
+  }
+  console.log("  " + Date.now());
+};
+
+// Server <-> WebSocket browser
+server.on("upgrade", function(req, skt, head) {
+  // Server <- browser new WebSocket(..)
+  console.log("<<< new WebSocket");
+  stopWS();
+  var crypto = require("crypto");
+  var magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  var inkey = req.headers["sec-websocket-key"];
+  var outkey = crypto.createHash("sha1").update(inkey + magic).digest("base64");
+  var mes = [
+    "HTTP/1.1 101 WebSocket",
+    "upgrade: websocket",
+    "connection: upgrade",
+    "sec-websocket-accept: " + outkey,
+    ""
+  ].join("\r\n") + "\r\n";
+  skt.write(mes);
+  console.log("WS open >>>");
+  wsocket = skt;
+  // listen <- browser websocket.send(..)
+  skt.on("error", function() {
+    console.log("skt error");
+    stopWS()
+  });
+  skt.on("timeout", function() {
+    console.log("skt timeout");
+    stopWS();
+  });
+  skt.on("end", function() {
+    console.log("skt end");
+    stopWS();
+  });
+  skt.on("close", function() {
+    console.log("skt close ------------------------------------");
+    stopWS();
+  });
+  skt.on("data", function(fm) {
+    console.log("<-- ws.send()");
+    var wsfo = decodeWSFrame(fm);
+    if (!wsfo) {
+      stopWS();
+      return;
+    }
+    // GO TWITTER STREAM
+    var params = wsfo;
+    params.method = "GET";
+    params.data = "";
+    var tokens = String(params.headers.authorization).split(",");
+    if (tokens.length === 3) {
+      params.oauth_phase = tokens[0];
+      params.token = tokens[1];
+      params.token_secret = tokens[2];
+    }
+    streamTwitter(params, skt);
+  });
+});
+
+// WSFrame to Message
+var decodeWSFrame = function(fm) {
+  // Extract message from WSFrame
+  var ib = 0;
+
+  // [BYTE 1]
+  var b1 = fm[ib];
+  if ((b1 & 0x0f) === 0x8) {
+    console.log("<-- ws.close()");
+    return false;
+  }
+  ib++;
+
+  // [BYTE 2]
+  var b2 = fm[ib];
+  var mask = !!(b2 >>> 7);
+  var length = b2 & 0x7f;
+  ib++;
+
+  if (length === 126) {
+    // [BYTE 3 4] 16bit = 2B
+    length = fm.readUInt16BE(ib);
+    ib += 2;
+  } else if (length === 127) {
+    // [BYTE 3 4 5 6 7 8 9 A] 64bit = 8B
+    length = fm.readDoubleBE(ib);
+    ib += 8;
+  }
+
+  // [BYTE (3<=*) * * *] 4B
+  if (mask) {
+    mask = fm.slice(ib, ib + 4);
+    ib += 4;
+  }
+
+  // [BYTE (3<=*) ...] length B
+  // UN-MASKING message
+  var msg = fm.slice(ib);
+  if (mask) for (var i = 0; i < length; ++i) msg[i] ^= mask[i % 4];
+
+  try {
+    return JSON.parse(msg.toString("utf-8"));
+  } catch(e) {
+    console.log("JSON cannot parse * of ws.send(*)");
+    return false;
+  }
+};
+
+// Message to WSFrame
+var encodeWSFrame = function(msg) {
+  msg = new Buffer(msg);
+  // [BYTE 1]
+  var b1 = new Buffer([1 << 7 | 0x1]);
+  // [BYTE 2]
+  var b2 = new Buffer([0 << 7 | 126]);
+  // [BYTE 3 4]
+  var b3 = new Buffer([msg.length >>> 8, msg.length & 0xff]);
+  return Buffer.concat([b1, b2, b3, msg]);
+};
 
 // Server <- request from browser
 server.on("request", function(req, res) {
@@ -224,133 +374,3 @@ server.on("request", function(req, res) {
     }
   });
 });
-
-// Server <-> WebSocket browser
-var wstimer;
-server.on("upgrade", function(req, skt, head) {
-  // Server <- browser new WebSocket(..)
-  if (reqTwing) {
-    console.log("ReOpen. abort Twitter streaming.");
-    reqTwing.abort();
-    reqTwing = null;
-  }
-  var crypto = require("crypto");
-  var magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-  var inkey = req.headers["sec-websocket-key"];
-  var outkey = crypto.createHash("sha1").update(inkey + magic).digest("base64");
-  var mes = [
-    "HTTP/1.1 101 WebSocket",
-    "upgrade: websocket",
-    "connection: upgrade",
-    "sec-websocket-accept: " + outkey,
-    ""
-  ].join("\r\n") + "\r\n";
-  skt.write(mes);
-  var alivedate = Date.now();
-  clearInterval(wstimer);
-  wstimer = setInterval(function() {
-    if (Date.now() - alivedate > 30000) {
-      console.log("Timeout.");
-      skt.end();
-      if (reqTwing) {
-        reqTwing.abort();
-        reqTwing = null;
-        console.log("abort Twitter streaming.");
-      }
-    } else {
-      console.log("keep-aliving");
-    }
-  }, 10 * 1000);
-  // listen <- browser websocket.send(..)
-  skt.on("data", function(fm) {
-    var wsfo = decodeWSFrame(fm);
-    if (!wsfo) {
-      skt.end();
-      reqTwing.abort();
-      reqTwing = null;
-      console.log("Close Requested. abort Twitter streaming.");
-      return;
-    } else if (wsfo === "keep-alive") {
-      console.log(wsfo);
-      alivedate = Date.now();
-      return;
-    }
-    // GO TWITTER STREAM
-    var params = wsfo;
-    params.method = "GET";
-    params.data = "";
-    var tokens = String(params.headers.authorization).split(",");
-    if (tokens.length === 3) {
-      params.oauth_phase = tokens[0];
-      params.token = tokens[1];
-      params.token_secret = tokens[2];
-    }
-    reqTwing = streamTwitter(params, skt);
-  });
-});
-
-// WSFrame to Message
-var decodeWSFrame = function(fm) {
-  // EXTRACT MESSAGE from FRAME
-  var idx = 0;
-  var b1 = fm[idx];
-  idx += 1;
-  var b2 = fm[idx];
-  //    1 1111111 | bit
-  // Mask Length  | mean
-  var masking = b2 >>> 7;
-  var mask = 0;
-  var leng = b2 & 0x7f;
-  var length = 0;
-  if (leng === 127) {
-    // 64bit = 8B
-    idx += 1;
-    length = fm.readDoubleBE(idx);
-    idx += 8;
-  } else if (leng === 126) {
-    // 16bit = 2B
-    idx += 1;
-    length = fm.readUInt16BE(idx);
-    idx += 2;
-  } else {
-    // 7bit = (1B)
-    length = fm[idx] & 0x7f;
-    idx += 1;
-  }
-  if (masking) {
-    // 4B
-    mask = fm.slice(idx, idx + 4);
-    idx += 4;
-  }
-  // UN-MASKING
-  var mskmsg = fm.slice(idx);
-  var msg = new Buffer(length);
-  for (var i = 0; i < length; ++i) {
-    msg[i] = mskmsg[i] ^ mask[i % 4];
-  }
-  var message = msg.toString("utf-8");
-  var msgjson;
-  try {
-    msgjson = JSON.parse(message);
-  } catch(e) {
-    return false;
-  }
-  if (b1 & 0x02) {
-    return false
-  }
-  return msgjson;
-};
-
-// Message to WSFrame
-var encodeWSFrame = function(msg) {
-  var msg = new Buffer(msg);
-  var length = msg.length;
-  var b1 = new Buffer([0x81]);
-  var masking = 0;
-  var leng = 126;
-  var b2 = new Buffer([(masking << 7) | leng]);
-  var lengthbox = new Buffer(2);
-  lengthbox.writeUInt16BE(length, 0);
-  var sendfm = Buffer.concat([b1, b2, lengthbox, msg]);
-  return sendfm;
-};
