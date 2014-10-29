@@ -257,8 +257,18 @@ server.on("upgrade", function(req, skt, head) {
     console.log("skt close ------------------------------------");
     stopWS(reqTwing, wsocket);
   });
+  var operafm = "";
   skt.on("data", function(fm) {
     console.log("<-- ws.send()");
+    // FIX for Opera 12.17
+    if (fm.length === 1 && (fm[0] & 0xf) <= 2) {
+      operafm = new Buffer(fm);
+      return;
+    } else if (operafm.length) {
+      fm = Buffer.concat([operafm, fm])
+      operafm = "";
+    }
+    // DECODE * of ws.send(*)
     var wsfo = decodeWSFrame(fm);
     if (wsfo === 0) {
       stopWS(reqTwing, wsocket);
