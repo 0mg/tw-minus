@@ -183,7 +183,7 @@ var streamTwitter = function(params, browser) {
       } catch(e) {
         if (fixds.trim() === "") {
           browser.write(encodeWSFrame("."));
-          console.log("-> skt.write");
+          console.log("-> skt.write.");
           entry = new Buffer("");
         }
       }
@@ -208,16 +208,16 @@ server.listen(L.PORT);
 server.on("upgrade", function(req, skt, head) {
   console.log("<<< new WebSocket");
   // destroy SOCKET & TWITTER STREAMING
-  var stopWS = function(reqTwing, wsocket) {
+  var stopWS = function(reqTwin, wsocke) {
     console.log("# stopWS");
-    if (wsocket) {
-      wsocket.end();
-      wsocket = null;
+    if (wsocke) {
+      wsocke.end();
+      wsocke = null;
       console.log("  skt.end() ->");
     }
-    if (reqTwing) {
-      reqTwing.abort();
-      reqTwing = null;
+    if (reqTwin) {
+      reqTwin.abort();
+      reqTwin = null;
       console.log("  reqTW.abort() ->");
     }
     console.log("  " + Date.now());
@@ -260,8 +260,10 @@ server.on("upgrade", function(req, skt, head) {
   skt.on("data", function(fm) {
     console.log("<-- ws.send()");
     var wsfo = decodeWSFrame(fm);
-    if (!wsfo) {
+    if (wsfo === 0) {
       stopWS(reqTwing, wsocket);
+      return;
+    } else if (!wsfo) {
       return;
     }
     // GO TWITTER STREAM
@@ -282,12 +284,13 @@ server.on("upgrade", function(req, skt, head) {
 var decodeWSFrame = function(fm) {
   // Extract message from WSFrame
   var ib = 0;
+  console.log("################## ", fm);
 
   // [BYTE 1]
   var b1 = fm[ib];
   if ((b1 & 0x0f) === 0x8) {
     console.log("<-- ws.close()");
-    return false;
+    return 0;
   }
   ib++;
 
@@ -331,10 +334,15 @@ var encodeWSFrame = function(msg) {
   msg = new Buffer(msg);
   // [BYTE 1]
   var b1 = new Buffer([1 << 7 | 0x1]);
-  // [BYTE 2]
-  var b2 = new Buffer([0 << 7 | 126]);
-  // [BYTE 3 4]
-  var b3 = new Buffer([msg.length >>> 8, msg.length & 0xff]);
+  // [BYTE 2] [BYTE 3]
+  var b2, b3;
+  if (msg.length > 125) {
+    b2 = new Buffer([126]);
+    b3 = new Buffer([msg.length >>> 8, msg.length & 0xff])
+  } else {
+    b2 = new Buffer([msg.length]);
+    b3 = new Buffer([]);
+  }
   return Buffer.concat([b1, b2, b3, msg]);
 };
 

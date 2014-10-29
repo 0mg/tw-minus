@@ -1960,12 +1960,14 @@ V.main.showPage.on1 = function(hash, q, my) {
     ws.addEventListener("open", function() {
       insw(D.ce("h3").add(D.ct("WS opened")));
       var auth = X.getOAuthHeader("ws", url, {}, url.oauthPhase);
-      ws.send(JSON.stringify({
+      var msg = JSON.stringify({
         url: url,
         headers: {
           authorization: auth
         }
-      }));
+      });
+      console.log(msg.length);
+      ws.send(msg);
     });
     ws.addEventListener("close", function() {
       insw(D.ce("h3").add(D.ct("WS closed")));
