@@ -206,58 +206,53 @@ server.listen(L.PORT);
 
 // Server <-> WebSocket browser
 server.on("upgrade", function(req, skt, head) {
-  console.log("<<< new WebSocket");
-  // destroy SOCKET & TWITTER STREAMING
-  var stopWS = function(reqTwin, wsocke) {
+  // destroy Request outgoing & User Socket
+  var stopWS = function(req_out, user_socket) {
     console.log("# stopWS");
-    if (wsocke) {
-      wsocke.end();
-      wsocke = null;
-      console.log("  skt.end() ->");
-    }
-    if (reqTwin) {
-      reqTwin.abort();
-      reqTwin = null;
+    if (req_out) {
+      req_out.abort();
       console.log("  reqTW.abort() ->");
+    }
+    if (user_socket) {
+      user_socket.end();
+      console.log("  skt.end() ->");
     }
     console.log("  " + Date.now());
   };
   // Server <- browser new WebSocket(..)
-  var reqTwing;
-  var wsocket;
-  stopWS(reqTwing, wsocket);
-  var crypto = require("crypto");
-  var magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  var WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   var inkey = req.headers["sec-websocket-key"];
-  var outkey = crypto.createHash("sha1").update(inkey + magic).digest("base64");
-  var mes = [
+  var crypto = require("crypto");
+  var outkey = crypto.createHash("sha1").
+    update(inkey + WS_GUID).digest("base64");
+  var outheader = [
     "HTTP/1.1 101 Switching Protocols",
     "Upgrade: websocket",
     "Connection: Upgrade",
     "Sec-WebSocket-Accept:" + outkey,
     ""
   ].join("\r\n") + "\r\n";
-  skt.write(mes);
-  console.log("WS open >>>");
-  wsocket = skt;
+  // Server -> browser>authorize
+  skt.write(outheader);
   // listen <- browser websocket.send(..)
   skt.on("error", function() {
     console.log("skt error");
-    stopWS(reqTwing, wsocket);
+    stopWS(reqTwing, skt);
   });
   skt.on("timeout", function() {
     console.log("skt timeout");
-    stopWS(reqTwing, wsocket);
+    stopWS(reqTwing, skt);
   });
   skt.on("end", function() {
     console.log("skt end");
-    stopWS(reqTwing, wsocket);
+    stopWS(reqTwing, skt);
   });
   skt.on("close", function() {
     console.log("skt close ------------------------------------");
-    stopWS(reqTwing, wsocket);
+    stopWS(reqTwing, skt);
   });
   var operafm = "";
+  var reqTwing;
   skt.on("data", function(fm) {
     console.log("<-- ws.send()");
     // FIX for Opera 12.17
@@ -271,7 +266,7 @@ server.on("upgrade", function(req, skt, head) {
     // DECODE * of ws.send(*)
     var wsfo = decodeWSFrame(fm);
     if (wsfo === 0) {
-      stopWS(reqTwing, wsocket);
+      stopWS(reqTwing, skt);
       return;
     } else if (!wsfo) {
       return;
