@@ -232,10 +232,10 @@ server.on("upgrade", function(req, skt, head) {
   var inkey = req.headers["sec-websocket-key"];
   var outkey = crypto.createHash("sha1").update(inkey + magic).digest("base64");
   var mes = [
-    "HTTP/1.1 101 WebSocket",
-    "upgrade: websocket",
-    "connection: upgrade",
-    "sec-websocket-accept: " + outkey,
+    "HTTP/1.1 101 Switching Protocols",
+    "Upgrade: websocket",
+    "Connection: Upgrade",
+    "Sec-WebSocket-Accept:" + outkey,
     ""
   ].join("\r\n") + "\r\n";
   skt.write(mes);
