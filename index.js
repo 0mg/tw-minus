@@ -94,6 +94,16 @@ var srvres = {
   }
 };
 
+// destroy Request outgoing & User Socket
+var closeIO = function(server_req, user_socket) {
+  if (server_req) {
+    server_req.abort(); // -> event [close]
+  }
+  if (user_socket) {
+    user_socket.end(); // -> event [close]
+  }
+};
+
 // Server call Twitter API -> response to browser
 var sendTwitter = function(params, browser) {
   var url = L.TW_API_URL + params.url;
@@ -165,10 +175,9 @@ var streamTwitter = function(params, browser) {
     headers: headers
   };
   var req = https.request(options, function(res) {
-    console.log("<- Tw res");
     var entry = new Buffer("");
     res.on("data", function(d) {
-      var fixds = d.toString("utf-8").replace(/\r\n/g, "");
+      var fixds = d.toString("utf-8");
       entry = Buffer.concat([entry, d]);
       console.log("<- Tw Stream | " +
         fixds.slice(0,10) + "..." + fixds.slice(-10));
@@ -177,28 +186,26 @@ var streamTwitter = function(params, browser) {
         browser.write(WSF.framify(d));
         return;
       }
-      try {
-        JSON.parse(entry.toString("utf-8"));
+      var json = null;
+      try { json = JSON.parse(entry.toString("utf-8")); } catch(e) {}
+      if (json) {
         browser.write(WSF.framify(entry));
         console.log("-> skt.write");
         entry = new Buffer("");
-      } catch(e) {
-        if (fixds.trim() === "") {
-          browser.write(WSF.framify("."));
-          console.log("-> skt.write.");
-          entry = new Buffer("");
-        }
+      } else if (fixds.trim() === "") {
+        browser.write(WSF.framify("."));
+        console.log("-> skt.write.");
+        entry = new Buffer("");
       }
     });
     res.on("end", function() {
       browser.end();
     });
   });
-  req.on("error", function() { console.log("reqTW error"); });
-  req.on("close", function() { console.log("reqTW close"); });
+  req.on("error", function() {}); // MUST LISTEN
+  req.on("close", function() { console.log("req close __|"); });
   req.write(params.data);
   req.end();
-  console.log("req -> Tw");
   return req;
 };
 
@@ -208,19 +215,6 @@ server.listen(L.PORT);
 
 // Server <-> WebSocket browser
 server.on("upgrade", function(req, skt, head) {
-  // destroy Request outgoing & User Socket
-  var stopWS = function(req_out, user_socket) {
-    console.log("# stopWS");
-    if (req_out) {
-      req_out.abort();
-      console.log("  reqTW.abort() ->");
-    }
-    if (user_socket) {
-      user_socket.end();
-      console.log("  skt.end() ->");
-    }
-    console.log("  " + Date.now());
-  };
   // Server <- browser new WebSocket(..)
   var WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   var inkey = req.headers["sec-websocket-key"];
@@ -237,27 +231,20 @@ server.on("upgrade", function(req, skt, head) {
   // Server -> browser>authorize
   skt.write(outheader);
   // listen <- browser websocket.send(..)
-  skt.on("error", function() {
-    console.log("skt error");
-    stopWS(reqTwing, skt);
-  });
-  skt.on("timeout", function() {
-    console.log("skt timeout");
-    stopWS(reqTwing, skt);
-  });
-  skt.on("end", function() {
-    console.log("skt end");
-    stopWS(reqTwing, skt);
-  });
-  skt.on("close", function() {
-    console.log("skt close ------------------------------------");
-    stopWS(reqTwing, skt);
-  });
-  var operafm = "";
   var reqTwing;
+  var operafm = "";
+  skt.on("error", function() {
+  }).on("timeout", function() {
+    closeIO(reqTwing, skt);
+  }).on("end", function() { // <- browser close tab, F5
+    closeIO(reqTwing, skt);
+  }).on("close", function() { // <- end(), event[error]
+    closeIO(reqTwing, null);
+    console.log("skt close __/");
+  });
   skt.on("data", function(fm) {
     console.log("<-- ws.send()");
-    // FIX for Opera 12.17
+    // Patch for Opera 12.17
     if (fm.length === 1 && (fm[0] & 0xf) <= 2) {
       operafm = new Buffer(fm);
       return;
@@ -268,7 +255,7 @@ server.on("upgrade", function(req, skt, head) {
     // DECODE * of ws.send(*)
     var wsfo = new WSF(fm);
     if (wsfo.type === "close") {
-      stopWS(reqTwing, skt);
+      closeIO(reqTwing, skt);
       return;
     }
     var params = wsfo.json;
