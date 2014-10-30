@@ -85,35 +85,24 @@ var srvres = {
       twres.on("end", function() { browser.end(); });
     };
     var params = Object.create(req);
-    params.ipaddr = params.socket.remoteAddress;
     params.data = rcvdata;
-    var twreq = sendTwitter(params, browser, callback);
+    sendTwitter(params, browser, callback);
   }
 };
 srvres.websocket = function(req, browser, rcvdata) {
   var callback = function(twres) {
-    var entry;
     twres.on("data", function(d) {
-      entry = Buffer.concat([entry || new Buffer(""), d]);
-      if (twres.statusCode !== 200) {
+      if (twres.statusCode === 200) {
+        browser.write(WSF.framify(d));
+      } else {
         browser.write(WSF.framify(JSON.stringify(twres.headers)));
         browser.write(WSF.framify(d));
-        return;
-      }
-      var json = undefined;
-      try { json = JSON.parse(entry.toString("utf-8")); } catch(e) {}
-      if (json !== undefined) {
-        browser.write(WSF.framify(entry));
-        entry = null;
-      } else if (d.toString("utf-8").trim() === "") {
-        browser.write(WSF.framify(entry));
-        entry = null;
       }
     });
     twres.on("end", function() { browser.end(); });
   };
-  var params = Object.create(req);
-  params.ipaddr = params.remoteAddress;
+  var params = rcvdata;
+  params.socket = browser;
   params.data = "";
   return sendTwitter(params, browser, callback);
 };
@@ -145,7 +134,7 @@ var sendTwitter = function(params, browser, callback) {
     postqry = {};
   }
   var headers = {
-    "x-forwarded-for": params.ipaddr
+    "x-forwarded-for": params.socket.remoteAddress
   };
   if ("accept-encoding" in params.headers) {
     headers["accept-encoding"] = params.headers["accept-encoding"];
@@ -252,7 +241,7 @@ server.on("upgrade", function(req, skt, head) {
     }
     var params = wsfo.json;
     if (params === undefined) return;
-    reqTwing = srvres.websocket(params, skt, "");
+    reqTwing = srvres.websocket(req, skt, params);
   });
   skt.on("error", function() {
   }).on("timeout", function() {

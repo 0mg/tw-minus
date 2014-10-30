@@ -1143,6 +1143,11 @@ API.urls.init = function() {
       1.1: "/1.1/help/configuration"
     })
   };
+  urls.stream = {
+    user: uv({
+      1.1: "https://userstream.twitter.com/1.1/user"
+    })
+  };
   API.urls.init = null;
   return urls;
 };
@@ -1950,49 +1955,8 @@ V.main.showPage.on1 = function(hash, q, my) {
     D.q("#main").add(it.newUsers(my));
     break;
   case "friends":
-    var url = "https://userstream.twitter.com/1.1/user.json" +
-      "?stringify_friend_ids=true";
-    var ws = new WebSocket(
-      (location.protocol === "http:" ? "ws:" : "wss:") + 
-      "//" + location.host);
-    var insw = function(msg) {
-      D.q("#main").ins(msg instanceof Node ? msg : D.ct(msg));
-    };
-    ws.addEventListener("open", function() {
-      insw(D.ce("h3").add(D.ct("WS opened")));
-      var auth = X.getOAuthHeader("ws", url, {}, url.oauthPhase);
-      var msg = JSON.stringify({
-        method: "GET",
-        url: url,
-        headers: {
-          authorization: auth
-        }
-      });
-      console.log(msg.length);
-      ws.send(msg);
-    });
-    ws.addEventListener("close", function() {
-      insw(D.ce("h3").add(D.ct("WS closed")));
-    });
-    ws.addEventListener("message", function(ev) {
-      var data;
-      try {
-        data = JSON.parse(ev.data);
-        if (["rt", "tweet", "dmsg"].indexOf(API.getType(data)) >= 0) {
-          data = V.main.newTweet(data, my);
-        } else {
-          data = O.htmlify(data);
-        }
-      } catch(e) {
-        data = ev.data;
-      }
-      insw(data);
-    });
-    var stopbtn = D.ce("button").add(D.ct("stop"));
-    stopbtn.addEventListener("click", function() {
-      ws.close();
-    });
-    D.q("#subaction-inner-1").add(stopbtn);
+    it.showStream(API.urls.stream.user()() + "?" + q +
+      "&stringify_friend_ids=true", my);
     break;
   case "lists":
     it.showLists(API.urls.lists.all()() + "?" + q +
@@ -2169,6 +2133,67 @@ V.main.showPage.on3 = function(hash, q, my) {
       V.outline.showProfileOutline(hash[0], my, 1);
     }
   }
+};
+
+// Render view of stream.twitter
+V.main.showStream = function fn(url, my) {
+  var ws;
+  var openbtn = D.ce("button").add(D.ct("Reset/Start"));
+  var stopbtn = D.ce("button").add(D.ct("Stop"));
+  openbtn.addEventListener("click", function() {
+    D.ev(stopbtn, "click"); ws = fn.open(url, my);
+  });
+  stopbtn.addEventListener("click", function() { ws && ws.close(); });
+  D.q("#subaction-inner-1").add(openbtn, stopbtn);
+  D.ev(openbtn, "click");
+};
+V.main.showStream.open = function(url, my) {
+  var insw = function(msg, sp) {
+    D.q("#main").ins(
+      msg instanceof Node ? msg :
+      sp ? D.ce("center").sa("style", "background:" + sp).add(D.ct(msg)) :
+      D.ct(msg)
+    );
+  };
+  var protocol = location.protocol === "http:" ? "ws:" : "wss:";
+  var ws = new WebSocket(protocol + "//" + location.host);
+  ws.addEventListener("open", function() {
+    insw("OPENED WebSocket", "#0f0");
+    var fxurl = T.fixURL(url);
+    var auth = X.getOAuthHeader("GET", fxurl, {}, url.oauthPhase);
+    var msg = JSON.stringify({
+      method: "GET",
+      url: fxurl,
+      headers: {
+        authorization: auth
+      }
+    });
+    ws.send(msg);
+  });
+  var msgbuf = "";
+  ws.addEventListener("message", function(ev) { console.log(ev.data);
+    var msg = ev.data.trim();
+    try { var json = JSON.parse(msgbuf += msg); } catch(e) {}
+    if (json !== undefined) {
+      if (["rt", "tweet", "dmsg"].indexOf(API.getType(json)) >= 0) {
+        insw(V.main.newTweet(json, my));
+      } else {
+        if (json.friends_str) insw("Omitted JSON", "#0ff");
+        else insw(O.htmlify(json));
+      }
+      msgbuf = "";
+    } else if (msgbuf.length > 1e6) {
+      insw(msgbuf);
+      insw("Drained JSON buffer", "#fc0");
+      msgbuf = "";
+    } else {
+      insw(D.ce("hr").sa("style", "border-width:1px 0 0"));
+    }
+  });
+  ws.addEventListener("close", function() {
+    insw("CLOSED WebSocket", "#f66");
+  });
+  return ws;
 };
 
 // Render view of list of settings
