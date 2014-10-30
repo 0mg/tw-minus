@@ -7,6 +7,8 @@ var URL = require("url");
 var env = require("./env.js"),
     F = env.F, L = env.L;
 var P = require("./P.js");
+var WS = require("./WS.js"),
+    WSF = WS.WSF;
 
 // make Response Header
 var Header = function(filename) {
@@ -171,18 +173,18 @@ var streamTwitter = function(params, browser) {
       console.log("<- Tw Stream | " +
         fixds.slice(0,10) + "..." + fixds.slice(-10));
       if (res.statusCode !== 200) {
-        browser.write(encodeWSFrame(new Buffer(JSON.stringify(res.headers))));
-        browser.write(encodeWSFrame(d));
+        browser.write(WSF.framify(JSON.stringify(res.headers)));
+        browser.write(WSF.framify(d));
         return;
       }
       try {
         JSON.parse(entry.toString("utf-8"));
-        browser.write(encodeWSFrame(entry));
+        browser.write(WSF.framify(entry));
         console.log("-> skt.write");
         entry = new Buffer("");
       } catch(e) {
         if (fixds.trim() === "") {
-          browser.write(encodeWSFrame("."));
+          browser.write(WSF.framify("."));
           console.log("-> skt.write.");
           entry = new Buffer("");
         }
@@ -264,15 +266,14 @@ server.on("upgrade", function(req, skt, head) {
       operafm = "";
     }
     // DECODE * of ws.send(*)
-    var wsfo = decodeWSFrame(fm);
-    if (wsfo === 0) {
+    var wsfo = new WSF(fm);
+    if (wsfo.type === "close") {
       stopWS(reqTwing, skt);
       return;
-    } else if (!wsfo) {
-      return;
     }
+    var params = wsfo.json;
+    if (!params) return;
     // GO TWITTER STREAM
-    var params = wsfo;
     params.method = "GET";
     params.data = "";
     var tokens = String(params.headers.authorization).split(",");
@@ -284,72 +285,6 @@ server.on("upgrade", function(req, skt, head) {
     reqTwing = streamTwitter(params, skt);
   });
 });
-
-// WSFrame to Message
-var decodeWSFrame = function(fm) {
-  // Extract message from WSFrame
-  var ib = 0;
-  console.log("################## ", fm);
-
-  // [BYTE 1]
-  var b1 = fm[ib];
-  if ((b1 & 0x0f) === 0x8) {
-    console.log("<-- ws.close()");
-    return 0;
-  }
-  ib++;
-
-  // [BYTE 2]
-  var b2 = fm[ib];
-  var mask = !!(b2 >>> 7);
-  var length = b2 & 0x7f;
-  ib++;
-
-  if (length === 126) {
-    // [BYTE 3 4] 16bit = 2B
-    length = fm.readUInt16BE(ib);
-    ib += 2;
-  } else if (length === 127) {
-    // [BYTE 3 4 5 6 7 8 9 A] 64bit = 8B
-    length = fm.readDoubleBE(ib);
-    ib += 8;
-  }
-
-  // [BYTE (3<=*) * * *] 4B
-  if (mask) {
-    mask = fm.slice(ib, ib + 4);
-    ib += 4;
-  }
-
-  // [BYTE (3<=*) ...] length B
-  // UN-MASKING message
-  var msg = fm.slice(ib);
-  if (mask) for (var i = 0; i < length; ++i) msg[i] ^= mask[i % 4];
-
-  try {
-    return JSON.parse(msg.toString("utf-8"));
-  } catch(e) {
-    console.log("JSON cannot parse * of ws.send(*)");
-    return false;
-  }
-};
-
-// Message to WSFrame
-var encodeWSFrame = function(msg) {
-  msg = new Buffer(msg);
-  // [BYTE 1]
-  var b1 = new Buffer([1 << 7 | 0x1]);
-  // [BYTE 2] [BYTE 3]
-  var b2, b3;
-  if (msg.length > 125) {
-    b2 = new Buffer([126]);
-    b3 = new Buffer([msg.length >>> 8, msg.length & 0xff])
-  } else {
-    b2 = new Buffer([msg.length]);
-    b3 = new Buffer([]);
-  }
-  return Buffer.concat([b1, b2, b3, msg]);
-};
 
 // Server <- request from browser
 server.on("request", function(req, res) {
