@@ -1950,10 +1950,11 @@ V.main.showPage.on1 = function(hash, q, my) {
     D.q("#main").add(it.newUsers(my));
     break;
   case "friends":
-    var url = "/1.1/user.json?stringify_friend_ids=true";
+    var url = "https://userstream.twitter.com/1.1/user.json" +
+      "?stringify_friend_ids=true";
     var ws = new WebSocket(
       (location.protocol === "http:" ? "ws:" : "wss:") + 
-      "//" + location.host + url);
+      "//" + location.host);
     var insw = function(msg) {
       D.q("#main").ins(msg instanceof Node ? msg : D.ct(msg));
     };
@@ -1961,6 +1962,7 @@ V.main.showPage.on1 = function(hash, q, my) {
       insw(D.ce("h3").add(D.ct("WS opened")));
       var auth = X.getOAuthHeader("ws", url, {}, url.oauthPhase);
       var msg = JSON.stringify({
+        method: "GET",
         url: url,
         headers: {
           authorization: auth

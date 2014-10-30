@@ -85,9 +85,37 @@ var srvres = {
       twres.on("end", function() { browser.end(); });
     };
     var params = Object.create(req);
+    params.ipaddr = params.socket.remoteAddress;
     params.data = rcvdata;
-    sendTwitter(params, browser, callback);
+    var twreq = sendTwitter(params, browser, callback);
   }
+};
+srvres.websocket = function(req, browser, rcvdata) {
+  var callback = function(twres) {
+    var entry;
+    twres.on("data", function(d) {
+      entry = Buffer.concat([entry || new Buffer(""), d]);
+      if (twres.statusCode !== 200) {
+        browser.write(WSF.framify(JSON.stringify(twres.headers)));
+        browser.write(WSF.framify(d));
+        return;
+      }
+      var json;
+      try { json = JSON.parse(entry.toString("utf-8")); } catch(e) {}
+      if (json) {
+        browser.write(WSF.framify(entry));
+        entry = null;
+      } else if (d.toString("utf-8").trim() === "") {
+        browser.write(WSF.framify(entry));
+        entry = null;
+      }
+    });
+    twres.on("end", function() { browser.end(); });
+  };
+  var params = Object.create(req);
+  params.ipaddr = params.remoteAddress;
+  params.data = "";
+  return sendTwitter(params, browser, callback);
 };
 
 // destroy Request outgoing & User Socket
@@ -117,7 +145,7 @@ var sendTwitter = function(params, browser, callback) {
     postqry = {};
   }
   var headers = {
-    "x-forwarded-for": params.socket.remoteAddress
+    "x-forwarded-for": params.ipaddr
   };
   if ("accept-encoding" in params.headers) {
     headers["accept-encoding"] = params.headers["accept-encoding"];
@@ -140,136 +168,16 @@ var sendTwitter = function(params, browser, callback) {
     headers: headers
   };
   var req = https.request(options, callback);
-  req.write(params.data);
-  req.end();
-};
-
-// User streams
-var streamTwitter = function(params, browser) {
-  var url = "https://userstream.twitter.com" + params.url;
-  var urlo = URL.parse(url, true);
-  var postqry;
-  if (params.headers["content-type"] === "application/x-www-form-urlencoded") {
-    postqry = URL.parse("?" + params.data, true).query;
-  } else {
-    postqry = {};
-  }
-  var headers = {
-    "accept-encoding": params.headers["accept-encoding"]
-  };
-  headers["content-type"] = params.headers["content-type"];
-  headers["authorization"] = P.getOAuthHeader(
-    params.method,
-    url,
-    postqry,
-    params.oauth_phase,
-    params.token,
-    params.token_secret
-  );
-  var options = {
-    host: urlo.host,
-    path: params.url,
-    method: params.method,
-    headers: headers
-  };
-  var req = https.request(options, function(res) {
-    var entry = new Buffer("");
-    res.on("data", function(d) {
-      var fixds = d.toString("utf-8");
-      entry = Buffer.concat([entry, d]);
-      console.log("<- Tw Stream | " +
-        fixds.slice(0,10) + "..." + fixds.slice(-10));
-      if (res.statusCode !== 200) {
-        browser.write(WSF.framify(JSON.stringify(res.headers)));
-        browser.write(WSF.framify(d));
-        return;
-      }
-      var json = null;
-      try { json = JSON.parse(entry.toString("utf-8")); } catch(e) {}
-      if (json) {
-        browser.write(WSF.framify(entry));
-        console.log("-> skt.write");
-        entry = new Buffer("");
-      } else if (fixds.trim() === "") {
-        browser.write(WSF.framify("."));
-        console.log("-> skt.write.");
-        entry = new Buffer("");
-      }
-    });
-    res.on("end", function() {
-      browser.end();
-    });
-  });
   req.on("error", function() {}); // MUST LISTEN
-  req.on("close", function() { console.log("req close __|"); });
+  req.on("close", function() { console.log("req close"); });
   req.write(params.data);
-  req.end();
+  req.end(); console.log("req open");
   return req;
 };
 
 // Server listen <- request from browser
 var server = http.createServer();
 server.listen(L.PORT);
-
-// Server <-> WebSocket browser
-server.on("upgrade", function(req, skt, head) {
-  // Server <- browser new WebSocket(..)
-  var WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-  var inkey = req.headers["sec-websocket-key"];
-  var crypto = require("crypto");
-  var outkey = crypto.createHash("sha1").
-    update(inkey + WS_GUID).digest("base64");
-  var outheader = [
-    "HTTP/1.1 101 Switching Protocols",
-    "Upgrade: websocket",
-    "Connection: Upgrade",
-    "Sec-WebSocket-Accept:" + outkey,
-    ""
-  ].join("\r\n") + "\r\n";
-  // Server -> browser>authorize
-  skt.write(outheader);
-  // listen <- browser websocket.send(..)
-  var reqTwing;
-  var operafm = "";
-  skt.on("error", function() {
-  }).on("timeout", function() {
-    closeIO(reqTwing, skt);
-  }).on("end", function() { // <- browser close tab, F5
-    closeIO(reqTwing, skt);
-  }).on("close", function() { // <- end(), event[error]
-    closeIO(reqTwing, null);
-    console.log("skt close __/");
-  });
-  skt.on("data", function(fm) {
-    console.log("<-- ws.send()");
-    // Patch for Opera 12.17
-    if (fm.length === 1 && (fm[0] & 0xf) <= 2) {
-      operafm = new Buffer(fm);
-      return;
-    } else if (operafm.length) {
-      fm = Buffer.concat([operafm, fm])
-      operafm = "";
-    }
-    // DECODE * of ws.send(*)
-    var wsfo = new WSF(fm);
-    if (wsfo.type === "close") {
-      closeIO(reqTwing, skt);
-      return;
-    }
-    var params = wsfo.json;
-    if (!params) return;
-    // GO TWITTER STREAM
-    params.method = "GET";
-    params.data = "";
-    var tokens = String(params.headers.authorization).split(",");
-    if (tokens.length === 3) {
-      params.oauth_phase = tokens[0];
-      params.token = tokens[1];
-      params.token_secret = tokens[2];
-    }
-    reqTwing = streamTwitter(params, skt);
-  });
-});
 
 // Server <- request from browser
 server.on("request", function(req, res) {
@@ -304,5 +212,54 @@ server.on("request", function(req, res) {
     } else {
       srvres.main(req, res, data, filename);
     }
+  });
+});
+
+// Server <-> WebSocket browser
+server.on("upgrade", function(req, skt, head) {
+  // Server <- browser new WebSocket(..)
+  var WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+  var inkey = req.headers["sec-websocket-key"];
+  var crypto = require("crypto");
+  var outkey = crypto.createHash("sha1").
+    update(inkey + WS_GUID).digest("base64");
+  var outheader = [
+    "HTTP/1.1 101 Switching Protocols",
+    "Upgrade: websocket",
+    "Connection: Upgrade",
+    "Sec-WebSocket-Accept:" + outkey,
+    ""
+  ].join("\r\n") + "\r\n";
+  // Server -> browser>authorize
+  skt.write(outheader);
+  // listen <- browser websocket.send(..)
+  var reqTwing;
+  var operafm = "";
+  skt.on("data", function(fm) {
+    // Patch for Opera 12.17
+    if (fm.length === 1 && (fm[0] & 0xf) <= 2) {
+      operafm = new Buffer(fm);
+      return;
+    } else if (operafm.length) {
+      fm = Buffer.concat([operafm, fm])
+      operafm = "";
+    }
+    // DECODE * of ws.send(*)
+    var wsfo = new WSF(fm);
+    if (wsfo.type === "close") {
+      closeIO(reqTwing, skt);
+      return;
+    }
+    var params = wsfo.json;
+    if (!params) return;
+    reqTwing = srvres.websocket(params, skt, "");
+  });
+  skt.on("error", function() {
+  }).on("timeout", function() {
+    closeIO(reqTwing, skt);
+  }).on("end", function() { // <- browser close tab, F5
+    closeIO(reqTwing, skt);
+  }).on("close", function() { // <- end(), event[error]
+    closeIO(reqTwing, skt);
   });
 });
