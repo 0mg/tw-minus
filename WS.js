@@ -8,7 +8,7 @@ WSF = function(frame) { "use strict"; // new WSF(<buffer>)
   var opcode = opts.opcode, rawdata = opts.rawdata;
   var data_type = WSF.DATA_TYPES[opcode] || opcode;
   var data = data_type === "text" ? rawdata.toString("utf-8") : rawdata;
-  var json = null;
+  var json = undefined;
   if (data_type === "text") try { json = JSON.parse(data); } catch(e) {}
   this.type = data_type;
   this.data = data;

@@ -100,9 +100,9 @@ srvres.websocket = function(req, browser, rcvdata) {
         browser.write(WSF.framify(d));
         return;
       }
-      var json;
+      var json = undefined;
       try { json = JSON.parse(entry.toString("utf-8")); } catch(e) {}
-      if (json) {
+      if (json !== undefined) {
         browser.write(WSF.framify(entry));
         entry = null;
       } else if (d.toString("utf-8").trim() === "") {
@@ -251,7 +251,7 @@ server.on("upgrade", function(req, skt, head) {
       return;
     }
     var params = wsfo.json;
-    if (!params) return;
+    if (params === undefined) return;
     reqTwing = srvres.websocket(params, skt, "");
   });
   skt.on("error", function() {
