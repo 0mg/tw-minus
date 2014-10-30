@@ -76,25 +76,27 @@ var srvres = {
     res.write(header["location"]);
     res.end();
   },
-  xhr: function(req, res, rcvdata) {
+  xhr: function(req, browser, rcvdata) {
+    var callback = function(twres) {
+      browser.writeHead(twres.statusCode, twres.headers);
+      twres.on("data", function(d) { browser.write(d); });
+      twres.on("end", function() { browser.end(); });
+    };
     var params = Object.create(req);
-    var tokens = String(params.headers.authorization).split(",");
-    if (tokens.length === 3) {
-      params.oauth_phase = tokens[0];
-      params.token = tokens[1];
-      params.token_secret = tokens[2];
-    }
-    if (!("content-type" in params.headers)) {
-      params.headers["content-type"] = "";
-    }
     params.data = rcvdata;
-    sendTwitter(params, res);
+    sendTwitter(params, browser, callback);
   }
 };
 
 // Server call Twitter API -> response to browser
-var sendTwitter = function(params, browser) {
-  var url = L.TW_API_URL + params.url;
+var sendTwitter = function(params, browser, callback) {
+  var tokens = String(params.headers.authorization).split(",");
+  if (tokens.length === 3) {
+    params.oauth_phase = tokens[0];
+    params.token = tokens[1];
+    params.token_secret = tokens[2];
+  }
+  var url = URL.parse(params.url).host ? params.url : L.TW_API_URL + params.url;
   var urlo = URL.parse(url, true);
   var postqry;
   if (params.headers["content-type"] === "application/x-www-form-urlencoded") {
@@ -103,10 +105,14 @@ var sendTwitter = function(params, browser) {
     postqry = {};
   }
   var headers = {
-    "accept-encoding": params.headers["accept-encoding"],
     "x-forwarded-for": params.socket.remoteAddress
   };
-  headers["content-type"] = params.headers["content-type"];
+  if ("accept-encoding" in params.headers) {
+    headers["accept-encoding"] = params.headers["accept-encoding"];
+  }
+  if ("content-type" in params.headers) {
+    headers["content-type"] = params.headers["content-type"];
+  }
   headers["authorization"] = P.getOAuthHeader(
     params.method,
     url,
@@ -121,15 +127,7 @@ var sendTwitter = function(params, browser) {
     method: params.method,
     headers: headers
   };
-  var req = https.request(options, function(res) {
-    browser.writeHead(res.statusCode, res.headers);
-    res.on("data", function(d) {
-      browser.write(d);
-    });
-    res.on("end", function() {
-      browser.end();
-    });
-  });
+  var req = https.request(options, callback);
   req.write(params.data);
   req.end();
 };
