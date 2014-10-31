@@ -102,6 +102,10 @@ srvres.websocket = function(req, browser, rcvdata) {
     });
   };
   var params = rcvdata;
+  if (Object.prototype.toString.call(params) !== "[object Object]") return;
+  params.url = String(params.url);
+  params.data = String(params.data);
+  params.headers = Object(params.headers);
   params.socket = browser;
   return sendTwitter(params, browser, callback);
 };
@@ -124,7 +128,12 @@ var sendTwitter = function(params, browser, callback) {
     params.token = tokens[1];
     params.token_secret = tokens[2];
   }
-  var url = URL.parse(params.url).host ? params.url : L.TW_API_URL + params.url;
+  var url;
+  if (params.url.indexOf(L.TW_STREAM_URL + "/") === 0) {
+    url = params.url;
+  } else {
+    url = L.TW_API_URL + params.url;
+  }
   var urlo = URL.parse(url, true);
   var postqry;
   if (params.headers["content-type"] === "application/x-www-form-urlencoded") {
