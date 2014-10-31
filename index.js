@@ -224,7 +224,7 @@ server.on("upgrade", function(req, skt, head) {
   var operafm = "";
   skt.on("data", function(fm) {
     // Patch for Opera 12.17
-    if (fm.length === 1 && (fm[0] & 0xf) <= 2) {
+    if (fm.length === 1) {
       operafm = new Buffer(fm);
       return;
     } else if (operafm.length) {

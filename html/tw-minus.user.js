@@ -903,49 +903,33 @@ WS.format = function(method, url, q) {
   });
   return msg;
 };
-WS.onopen = function(method, url, q) {
-  X.onloadstart(method, url, q);
-};
-WS.onmessage = function(method, url, q, f) {
-  var alt_f = function() {};
-  if (f) f(this); else if (f === undefined) alt_f(this, method, url);
-  V.misc.onXHREnd(true, { status: "Message" }, method, url, q);
-};
-WS.onerror = function(method, url, q, f) {
-  var alt_f = function(ws, method, url) {};
-  if (f) f(this); else if (f === undefined) alt_f(this, method, url);
-  V.misc.onXHREnd(false, { status: "Error" }, method, url, q);
-};
-WS.onclose = function(method, url, q, f) {
-  var alt_f = function() {};
-  if (f) f(this); else if (f === undefined) alt_f(this, method, url);
-  V.misc.onXHREnd(true, { status: "Close" }, method, url, q);
-};
+WS.onopen = function(f) { if (f) f(this); };
+WS.onmessage = function(f) { if (f) f(this); };
+WS.onerror = function(f) { if (f) f(this); };
+WS.onclose = function(f) { if (f) f(this); };
 // XHR GET/POST via WebSocket
-WS.open = function(method, url, q, onOpen, onEnd, onMsg, onErr) {
+WS.open = function(onOpen, onEnd, onMsg, onErr) {
   var protocol = location.protocol === "http:" ? "ws:" : "wss:";
   var ws = new WebSocket(protocol + "//" + location.host);
-  q = T.strQuery(q);
-  ws.addEventListener("open", function(ev) {
-    ws.send(WS.format(method, url, q));
-    WS.onopen(method, url, q);
-    onOpen && onOpen(ev);
-  });
+  ws.addEventListener("open",
+    function(ev) { WS.onopen.call(ev, onOpen); });
   ws.addEventListener("message",
-    function(ev) { WS.onmessage.call(ev, method, url, q, onMsg); });
+    function(ev) { WS.onmessage.call(ev, onMsg); });
   ws.addEventListener("error",
-    function(ev) { WS.onerror.call(ev, method, url, q, onErr); });
+    function(ev) { WS.onerror.call(ev, onErr); });
   ws.addEventListener("close",
-    function(ev) { WS.onclose.call(ev, method, url, q, onEnd); });
+    function(ev) { WS.onclose.call(ev, onEnd); });
   return ws;
 };
-WS.get = function fn(url) {
-  var ags = [].slice.call(arguments, fn.length);
-  return WS.open.apply(WS, ["GET", T.fixURL(url), {}].concat(ags));
+WS.get = function(ws, url) {
+  var method = "GET", q = ""; url = T.fixURL(url);
+  ws.send(WS.format(method, url, q));
+  V.misc.onXHRStart(method, url, q);
 };
-WS.post = function fn(url, q) {
-  var ags = [].slice.call(arguments, fn.length);
-  return WS.open.apply(WS, ["POST", url, q].concat(ags));
+WS.post = function(ws, url, q) {
+  var method = "POST"; q = T.strQry(q);
+  ws.send(WS.format(method, url, q));
+  V.misc.onXHRStart(method, url, q);
 };
 
 // Twitter API Functions
@@ -2227,7 +2211,9 @@ V.main.showStream.open = function(url, my) {
     );
   };
   var msgbuf = "";
-  var onOpen = function() { insw("OPENED WebSocket", "#0f0"); };
+  var onOpen = function() {
+    insw("OPENED WebSocket", "#0f0"); WS.get(ws, url);
+  };
   var onMsg = function(ev) {
     if (ev.data instanceof Blob) { insw(msgbuf); msgbuf = "";
       insw("Twitter finished", "#ccc"); return ev.target.close();
@@ -2252,7 +2238,8 @@ V.main.showStream.open = function(url, my) {
   };
   var onErr = function() { insw(msgbuf); insw("ERROR on WebSocket", "#f66"); };
   var onEnd = function() { insw("CLOSED WebSocket", "#69f"); };
-  return WS.get(url, onOpen, onEnd, onMsg, onErr);
+  var ws = WS.open(onOpen, onEnd, onMsg, onErr);
+  return ws;
 };
 
 // Render view of list of settings
