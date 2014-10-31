@@ -4,7 +4,7 @@
 // ==/UserScript==
 "use strict";
 
-var U, C, D, O, T, P, X, V, API, LS;
+var U, C, D, O, T, P, X, V, API, LS, WS;
 
 // CONST VALUE
 C = {};
@@ -891,6 +891,63 @@ X.getX = function get(url, f, b) {
   D.q("body").add(script);
 };
 
+// WebSocket
+WS = {};
+WS.format = function(method, url, q) {
+  var auth = X.getOAuthHeader(method, url, q, url.oauthPhase);
+  var msg = JSON.stringify({
+    method: method,
+    url: url,
+    data: q,
+    headers: { authorization: auth }
+  });
+  return msg;
+};
+WS.onopen = function(method, url, q) {
+  X.onloadstart(method, url, q);
+};
+WS.onmessage = function(method, url, q, f) {
+  var alt_f = function() {};
+  if (f) f(this); else if (f === undefined) alt_f(this, method, url);
+  V.misc.onXHREnd(true, { status: "Message" }, method, url, q);
+};
+WS.onerror = function(method, url, q, f) {
+  var alt_f = function(ws, method, url) {};
+  if (f) f(this); else if (f === undefined) alt_f(this, method, url);
+  V.misc.onXHREnd(false, { status: "Error" }, method, url, q);
+};
+WS.onclose = function(method, url, q, f) {
+  var alt_f = function() {};
+  if (f) f(this); else if (f === undefined) alt_f(this, method, url);
+  V.misc.onXHREnd(true, { status: "Close" }, method, url, q);
+};
+// XHR GET/POST via WebSocket
+WS.open = function(method, url, q, onOpen, onEnd, onMsg, onErr) {
+  var protocol = location.protocol === "http:" ? "ws:" : "wss:";
+  var ws = new WebSocket(protocol + "//" + location.host);
+  q = T.strQuery(q);
+  ws.addEventListener("open", function(ev) {
+    ws.send(WS.format(method, url, q));
+    WS.onopen(method, url, q);
+    onOpen && onOpen(ev);
+  });
+  ws.addEventListener("message",
+    function(ev) { WS.onmessage.call(ev, method, url, q, onMsg); });
+  ws.addEventListener("error",
+    function(ev) { WS.onerror.call(ev, method, url, q, onErr); });
+  ws.addEventListener("close",
+    function(ev) { WS.onclose.call(ev, method, url, q, onEnd); });
+  return ws;
+};
+WS.get = function fn(url) {
+  var ags = [].slice.call(arguments, fn.length);
+  return WS.open.apply(WS, ["GET", T.fixURL(url), {}].concat(ags));
+};
+WS.post = function fn(url, q) {
+  var ags = [].slice.call(arguments, fn.length);
+  return WS.open.apply(WS, ["POST", url, q].concat(ags));
+};
+
 // Twitter API Functions
 API = {};
 API.urls = {};
@@ -1146,6 +1203,12 @@ API.urls.init = function() {
   urls.stream = {
     user: uv({
       1.1: "https://userstream.twitter.com/1.1/user"
+    }),
+    sample: uv({
+      1.1: "https://userstream.twitter.com/1.1/statuses/sample"
+    }),
+    filter: uv({
+      1.1: "https://userstream.twitter.com/1.1/statuses/filter"
     })
   };
   API.urls.init = null;
@@ -1958,6 +2021,11 @@ V.main.showPage.on1 = function(hash, q, my) {
     it.showStream(API.urls.stream.user()() + "?" + q +
       "&stringify_friend_ids=true", my);
     break;
+  case "public_timeline":
+    it.showStream(q ?
+      API.urls.stream.filter()() + "?" + q :
+      API.urls.stream.sample()(), my);
+    break;
   case "lists":
     it.showLists(API.urls.lists.all()() + "?" + q +
       "&reverse=true&cursor=-1", my);
@@ -2138,40 +2206,32 @@ V.main.showPage.on3 = function(hash, q, my) {
 // Render view of stream.twitter
 V.main.showStream = function fn(url, my) {
   var ws;
-  var openbtn = D.ce("button").add(D.ct("Reset/Start"));
-  var stopbtn = D.ce("button").add(D.ct("Stop"));
-  openbtn.addEventListener("click", function() {
-    D.ev(stopbtn, "click"); ws = fn.open(url, my);
+  var nd = {
+    open: D.ce("button").add(D.ct("Restart")),
+    stop: D.ce("button").add(D.ct("Stop"))
+  };
+  nd.open.addEventListener("click", function() {
+    D.ev(nd.stop, "click"); ws = fn.open(url, my);
   });
-  stopbtn.addEventListener("click", function() { ws && ws.close(); });
-  D.q("#subaction-inner-1").add(openbtn, stopbtn);
-  D.ev(openbtn, "click");
+  nd.stop.addEventListener("click", function() { ws && ws.close(); });
+  D.q("#subaction-inner-1").add(nd.open, nd.stop);
+  D.ev(nd.open, "click");
+  D.q("#main").add(D.ce("ol").sa("id", "timeline"));
 };
 V.main.showStream.open = function(url, my) {
   var insw = function(msg, sp) {
-    D.q("#main").ins(
+    D.q("#timeline").ins(
       msg instanceof Node ? msg :
       sp ? D.ce("center").sa("style", "background:" + sp).add(D.ct(msg)) :
       D.ct(msg)
     );
   };
-  var protocol = location.protocol === "http:" ? "ws:" : "wss:";
-  var ws = new WebSocket(protocol + "//" + location.host);
-  ws.addEventListener("open", function() {
-    insw("OPENED WebSocket", "#0f0");
-    var fxurl = T.fixURL(url);
-    var auth = X.getOAuthHeader("GET", fxurl, {}, url.oauthPhase);
-    var msg = JSON.stringify({
-      method: "GET",
-      url: fxurl,
-      headers: {
-        authorization: auth
-      }
-    });
-    ws.send(msg);
-  });
   var msgbuf = "";
-  ws.addEventListener("message", function(ev) { console.log(ev.data);
+  var onOpen = function() { insw("OPENED WebSocket", "#0f0"); };
+  var onMsg = function(ev) {
+    if (ev.data instanceof Blob) { insw(msgbuf); msgbuf = "";
+      insw("Twitter finished", "#ccc"); return ev.target.close();
+    }
     var msg = ev.data.trim();
     try { var json = JSON.parse(msgbuf += msg); } catch(e) {}
     if (json !== undefined) {
@@ -2189,11 +2249,10 @@ V.main.showStream.open = function(url, my) {
     } else {
       insw(D.ce("hr").sa("style", "border-width:1px 0 0"));
     }
-  });
-  ws.addEventListener("close", function() {
-    insw("CLOSED WebSocket", "#f66");
-  });
-  return ws;
+  };
+  var onErr = function() { insw(msgbuf); insw("ERROR on WebSocket", "#f66"); };
+  var onEnd = function() { insw("CLOSED WebSocket", "#69f"); };
+  return WS.get(url, onOpen, onEnd, onMsg, onErr);
 };
 
 // Render view of list of settings

@@ -4,6 +4,7 @@ var fs = require("fs");
 var http = require("http");
 var https = require("https");
 var URL = require("url");
+var crypto = require("crypto");
 var env = require("./env.js"),
     F = env.F, L = env.L;
 var P = require("./P.js");
@@ -92,18 +93,16 @@ var srvres = {
 srvres.websocket = function(req, browser, rcvdata) {
   var callback = function(twres) {
     twres.on("data", function(d) {
-      if (twres.statusCode === 200) {
-        browser.write(WSF.framify(d));
-      } else {
-        browser.write(WSF.framify(JSON.stringify(twres.headers)));
-        browser.write(WSF.framify(d));
-      }
+      browser.write(WSF.framify(d));
     });
-    twres.on("end", function() { browser.end(); });
+    twres.on("end", function() {
+      browser.write(WSF.framify(JSON.stringify(twres.headers)));
+      browser.write(WSF.framify(String(twres.statusCode)));
+      browser.write(WSF.framify("", "binary"));
+    });
   };
   var params = rcvdata;
   params.socket = browser;
-  params.data = "";
   return sendTwitter(params, browser, callback);
 };
 
@@ -209,7 +208,6 @@ server.on("upgrade", function(req, skt, head) {
   // Server <- browser new WebSocket(..)
   var WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   var inkey = req.headers["sec-websocket-key"];
-  var crypto = require("crypto");
   var outkey = crypto.createHash("sha1").
     update(inkey + WS_GUID).digest("base64");
   var outheader = [
@@ -243,12 +241,8 @@ server.on("upgrade", function(req, skt, head) {
     if (params === undefined) return;
     reqTwing = srvres.websocket(req, skt, params);
   });
-  skt.on("error", function() {
-  }).on("timeout", function() {
-    closeIO(reqTwing, skt);
-  }).on("end", function() { // <- browser close tab, F5
-    closeIO(reqTwing, skt);
-  }).on("close", function() { // <- end(), event[error]
-    closeIO(reqTwing, skt);
-  });
+  skt.on("error", function() {}).
+  on("timeout", function() { closeIO(reqTwing, skt); }).
+  on("end", function() { closeIO(reqTwing, skt); }). // <- close tab, F5
+  on("close", function() { closeIO(reqTwing, skt); }); // <- end(), event[error]
 });
