@@ -107,7 +107,8 @@ srvres.websocket = function(req, browser, rcvdata) {
   params.data = String(params.data);
   params.headers = Object(params.headers);
   params.socket = browser;
-  return sendTwitter(params, browser, callback);
+  return sendTwitter(params, browser, callback).
+    on("error", function() { browser.write(WSF.framify([1], "binary")); });
 };
 
 // destroy Request outgoing & User Socket

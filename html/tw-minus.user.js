@@ -2218,8 +2218,11 @@ V.main.showStream.open = function(url, my) {
     insw("OPENED WebSocket", "#0f0"); WS.get(ws, url);
   };
   var onMsg = function(ev) {
-    if (ev.data instanceof Blob) { insw(msgbuf); msgbuf = "";
-      insw("Twitter finished", "#ccc"); return ev.target.close();
+    if (ev.data instanceof Blob) {
+      insw(msgbuf); msgbuf = "";
+      if (ev.data.size) insw("Request Error", "#f6f");
+      else insw("Twitter finished", "#ccc");
+      return ev.target.close();
     }
     var msg = ev.data.trim();
     try { var json = JSON.parse(msgbuf += msg); } catch(e) {}
