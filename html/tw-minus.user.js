@@ -1253,6 +1253,9 @@ API.getType = function getType(data) {
     if (data.sender) return "dmsg";
   }
   if ("query" in data) return "svs";
+  if ("friends_str" in data) return "friends";
+  if ("delete" in data) return "delete";
+  if ("event" in data) return "event";
   if (data.errors) return "error";
   return "unknown object";
 };
@@ -2223,9 +2226,24 @@ V.main.showStream.open = function(url, my) {
     if (json !== undefined) {
       if (["rt", "tweet", "dmsg"].indexOf(API.getType(json)) >= 0) {
         insw(V.main.newTweet(json, my));
+      } else if (API.getType(json) === "delete") {
+        insw(D.ce("div").add(D.tweetize(json.delete.status.user_id_str +
+          "@ delete " + json.delete.status.id_str)));
+      } else if (API.getType(json) === "event") {
+        if (["favorite", "unfavorite"].indexOf(json.event) >= 0) {
+          insw(D.tweetize("@" + json.source.screen_name + " " + json.event).
+            add(V.main.newTweet(json.target_object, my)));
+        } else if (["follow", "unfollow", "block", "unblock", "mute", "unmute"].
+        indexOf(json.event) >= 0) {
+          insw(D.tweetize("@" + json.source.screen_name + " " + json.event).
+            add(V.main.newUser(json.target)));
+        } else {
+          insw(O.htmlify(json));
+        }
+      } else if (API.getType(json) === "friends") {
+        insw("Omitted JSON", "#0ff");
       } else {
-        if (json.friends_str) insw("Omitted JSON", "#0ff");
-        else insw(O.htmlify(json));
+        insw(O.htmlify(json));
       }
       msgbuf = "";
     } else if (msgbuf.length > 1e6) {
@@ -2233,11 +2251,11 @@ V.main.showStream.open = function(url, my) {
       insw("Drained JSON buffer", "#fc0");
       msgbuf = "";
     } else {
-      insw(D.ce("hr").sa("style", "border-width:1px 0 0"));
+      insw(D.ce("hr").sa("style", "border:1px solid #c0c0c0;margin:0"));
     }
   };
   var onErr = function() { insw(msgbuf); insw("ERROR on WebSocket", "#f66"); };
-  var onEnd = function() { insw("CLOSED WebSocket", "#69f"); };
+  var onEnd = function() { insw(msgbuf); insw("CLOSED WebSocket", "#69f"); };
   var ws = WS.open(onOpen, onEnd, onMsg, onErr);
   return ws;
 };
@@ -2919,26 +2937,9 @@ V.main.rendUsers = function(data, my, mode) {
   var basicCursor = !idsCursor && !pageCursor;
   var users_list = D.ce("ul").sa("id", "users");
   users && users.forEach(function(user) {
-    var lu = {
-      root: D.ce("li").sa("class", "user"),
-      screen_name: D.ce("a").sa("href", U.ROOT + user.screen_name).
-        sa("class", "screen_name").add(D.ct(user.screen_name)),
-      icon: D.ce("img").sa("class", "user-icon").
-        sa("src", user.profile_image_url_https).sa("alt", user.screen_name),
-      name: D.ce("span").sa("class", "name").add(D.ct(T.decodeHTML(user.name))),
-      description: D.ce("p").sa("class", "description").
-        add(D.tweetize(user.description, user.entities.description)),
-      created_at: D.ce("a").sa("class", "created_at").
-        add(D.ct(T.gapTime(new Date(user.created_at))))
-    };
-    if (user.protected) lu.root.classList.add("protected");
-    if (user.verified) lu.root.classList.add("verified");
-    if (user.url) lu.created_at.href = user.entities.url.urls[0].expanded_url;
-    users_list.add(lu.root.add(
-      lu.screen_name, lu.icon, lu.name, lu.description,
-      D.ce("span").sa("class", "meta").add(lu.created_at),
-      followerRequests ? V.panel.makeReqDecider(user): D.cf()
-    ));
+    var card = V.main.newUser(user);
+    if (followerRequests) card.add(V.panel.makeReqDecider(user));
+    users_list.add(card);
   });
 
   D.empty(D.q("#cursor"));
@@ -2956,6 +2957,31 @@ V.main.rendUsers = function(data, my, mode) {
     idsCursor ? V.main.cursorIdsPopState:
     pageCursor ? undefined: undefined
   );
+};
+V.main.newUser = function(user) {
+  var lu = {
+    root: D.ce("li").sa("class", "user"),
+    screen_name: D.ce("a").sa("href", U.ROOT + user.screen_name).
+      sa("class", "screen_name").add(D.ct(user.screen_name)),
+    icon: D.ce("img").sa("class", "user-icon").
+      sa("src", user.profile_image_url_https).sa("alt", user.screen_name),
+    name: D.ce("span").sa("class", "name").add(D.ct(T.decodeHTML(user.name))),
+    description: D.ce("p").sa("class", "description").
+      add(D.tweetize(user.description, (user.entities || []).description)),
+    created_at: D.ce("a").sa("class", "created_at").
+      add(D.ct(T.gapTime(new Date(user.created_at))))
+  };
+  if (user.protected) lu.root.classList.add("protected");
+  if (user.verified) lu.root.classList.add("verified");
+  if (user.url) {
+    lu.created_at.href = user.entities ?
+      user.entities.url.urls[0].expanded_url : user.url;
+  }
+  lu.root.add(
+    lu.screen_name, lu.icon, lu.name, lu.description,
+    D.ce("span").sa("class", "meta").add(lu.created_at)
+  );
+  return lu.root;
 };
 
 V.misc = {};
