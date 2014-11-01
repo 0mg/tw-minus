@@ -2246,7 +2246,7 @@ V.main.showStream.open = function(url, my) {
         insw(O.htmlify(json));
       }
       msgbuf = "";
-    } else if (msgbuf.length > 1e6) {
+    } else if (msg === "" && msgbuf || msgbuf.length > 1e5) {
       insw(msgbuf);
       insw("Drained JSON buffer", "#fc0");
       msgbuf = "";
