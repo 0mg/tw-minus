@@ -1923,8 +1923,59 @@ V.init.CSS = '\
   }\
   img.emoji {\
     width: 1em;\
+  }'
+  + // UserStream
+  '\
+  hr {\
+    margin: 0;\
+    border: 0 solid silver;\
+    border-width: 1px 0 0;\
   }\
-'.replace(/\s+/g, " ");
+  #timeline > li, .stream-event-target > li {\
+    list-style: none;\
+  }\
+  .stream-entry {\
+    position: relative;\
+    border-bottom: 1px solid silver;\
+  }\
+  .stream-entry .tweet,\
+  .stream-entry .user {\
+    border: 0;\
+  }\
+  .stream-syslog {\
+    padding-left: 1ex;\
+    border-bottom: 1px solid silver;\
+    background: #eee;\
+    color: gray;\
+  }\
+  .stream-fragment {\
+    padding: 1ex;\
+    border-bottom: 1px solid;\
+    font-size: x-small;\
+    background: #fdfdfd;\
+    color: silver;\
+  }\
+  .stream-fragment:empty {\
+    display: none;\
+  }\
+  .stream-event-source {\
+    position: absolute;\
+    bottom: 0; right: 0;\
+    padding: 1ex;\
+    line-height: 1;\
+    color: #aaa;\
+    background: #fdfdfd;\
+  }\
+  .stream-event-name {\
+    font-weight: bold;\
+  }\
+  .stream-event-target {\
+    background: #fdfdfd;\
+  }\
+  .stream-event-content {\
+    padding: 1ex;\
+    color: gray;\
+  }'.replace(/\s+/g, " ");
 
 // Clear all node and set new one
 V.init.initNode = function(my) {
@@ -2209,58 +2260,89 @@ V.main.showStream.open = function(url, my) {
   var insw = function(msg, sp) {
     D.q("#timeline").ins(
       msg instanceof Node ? msg :
-      sp ? D.ce("center").sa("style", "background:" + sp).add(D.ct(msg)) :
-      D.ct(msg)
+      sp ? D.ce("li").sa("class", "stream-syslog").add(D.ct(msg)) :
+      D.ce("li").sa("class", "stream-fragment").add(D.ct(msg))
     );
   };
   var msgbuf = "";
-  var onOpen = function() {
-    insw("OPENED WebSocket", "#0f0"); WS.get(ws, url);
+  var onOpen = function(ev) {
+    insw("started", 1);
+    WS.get(ws, url);
   };
   var onMsg = function(ev) {
     if (ev.data instanceof Blob) {
       insw(msgbuf); msgbuf = "";
-      if (ev.data.size) insw("Request Error", "#f6f");
-      else insw("Twitter finished", "#ccc");
+      if (ev.data.size) insw("request error", 1);
+      else insw("finished", 1);
       return ev.target.close();
     }
     var msg = ev.data.trim();
     try { var json = JSON.parse(msgbuf += msg); } catch(e) {}
     if (json !== undefined) {
-      if (["rt", "tweet", "dmsg"].indexOf(API.getType(json)) >= 0) {
+      if (["rt", "tweet"].indexOf(API.getType(json)) >= 0) {
         insw(V.main.newTweet(json, my));
-      } else if (API.getType(json) === "delete") {
-        insw(D.ce("div").add(D.tweetize(json.delete.status.user_id_str +
-          "@ delete " + json.delete.status.id_str)));
-      } else if (API.getType(json) === "event") {
-        if (["favorite", "unfavorite"].indexOf(json.event) >= 0) {
-          insw(D.tweetize("@" + json.source.screen_name + " " + json.event).
-            add(V.main.newTweet(json.target_object, my)));
-        } else if (["follow", "unfollow", "block", "unblock", "mute", "unmute"].
-        indexOf(json.event) >= 0) {
-          insw(D.tweetize("@" + json.source.screen_name + " " + json.event).
-            add(V.main.newUser(json.target)));
-        } else {
-          insw(O.htmlify(json));
-        }
       } else if (API.getType(json) === "friends") {
-        insw("Omitted JSON", "#0ff");
       } else {
-        insw(O.htmlify(json));
+        insw(V.main.newStreamEntry(json, my) || O.htmlify(json));
       }
       msgbuf = "";
     } else if (msg === "" && msgbuf || msgbuf.length > 1e5) {
       insw(msgbuf);
-      insw("Drained JSON buffer", "#fc0");
+      insw("buffer error", 1);
       msgbuf = "";
     } else {
-      insw(D.ce("hr").sa("style", "border:1px solid #c0c0c0;margin:0"));
+      insw(D.ce("hr"));
     }
   };
-  var onErr = function() { insw(msgbuf); insw("ERROR on WebSocket", "#f66"); };
-  var onEnd = function() { insw(msgbuf); insw("CLOSED WebSocket", "#69f"); };
+  var onErr = function() {
+    insw(msgbuf); msgbuf = "";
+    insw("socket error", 1);
+  };
+  var onEnd = function() {
+    insw(msgbuf); msgbuf = "";
+    insw("stopped", 1);
+  };
   var ws = WS.open(onOpen, onEnd, onMsg, onErr);
   return ws;
+};
+V.main.newStreamEntry = function(entry, my) {
+  if (!("event" in entry || "delete" in entry)) return false;
+  var nd = {
+    root: D.ce("li").sa("class", "stream-entry"),
+    src: D.ce("p").sa("class", "stream-event-source"),
+    evname: D.ce("span").sa("class", "stream-event-name"),
+    suser: D.cf(),
+    user: D.ce("a"),
+    tgt: D.ce("ul").sa("class", "stream-event-target")
+  };
+  if (API.getType(entry) === "delete") {
+    nd.root.dataset.stream_event_type = "delete";
+    nd.evname.add(D.ct("delete"));
+    nd.user.sa("class", "user_id");
+    nd.user.sa("href", U.ROOT + entry.delete.status.user_id_str + "@").
+      add(D.ct(entry.delete.status.user_id_str));
+    nd.suser.add(D.ct(" by "), nd.user, D.ct("@"))
+  } else {
+    nd.root.stream_event_type = entry.event;
+    nd.evname.add(D.ct(entry.event));
+    nd.user.sa("class", "screen_name");
+    nd.user.sa("href", U.ROOT + entry.source.screen_name).
+      add(D.ct(entry.source.screen_name));
+    nd.suser.add(D.ct(" by @"), nd.user)
+  }
+  if ("target_object" in entry) {
+    nd.tgt.add(V.main.newTweet(entry.target_object, my));
+  } else if ("target" in entry) {
+    nd.tgt.add(V.main.newUser(entry.target, my));
+  } else if (API.getType(entry) === "delete") {
+    nd.tgt.add(D.ce("li").sa("class", "stream-event-content").
+      add(D.ct("tweet:" + entry.delete.status.id_str)));
+  }
+  nd.root.add(
+    nd.tgt,
+    nd.src.add(nd.evname, nd.suser)
+  );
+  return nd.root;
 };
 
 // Render view of list of settings
