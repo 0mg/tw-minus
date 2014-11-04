@@ -83,7 +83,7 @@ var srvres = {
     var callback = function(twres) {
       browser.writeHead(twres.statusCode, twres.headers);
       twres.on("data", function(d) { browser.write(d); });
-      twres.on("end", function() { browser.end(); });
+      twres.on("end", function() { browser.end(); console.log("req end") });
     };
     var params = Object.create(req);
     params.data = rcvdata;
