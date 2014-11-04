@@ -2317,45 +2317,44 @@ V.main.showStream.open = function(url, my) {
   return ws;
 };
 V.main.newStreamEntry = function(entry, my) {
-  if (!("event" in entry || "delete" in entry)) return false;
+  if (API.getType(entry) === "delete") {
+    var delete_type = Object.keys(entry["delete"])[0];
+    var data = entry["delete"][delete_type];
+    entry.event = "delete";
+    entry.type = delete_type;
+    entry.source = { id: data.user_id };
+    entry.delete_target = { id: data.id };
+  }
+  var user = entry.source;
   var nd = {
-    root: D.ce("li").sa("class", "stream-entry"),
+    root: D.ce("li").sa("class", "stream-entry " + entry.event),
     src: D.ce("p").sa("class", "stream-event-source"),
-    evname: D.ce("span").sa("class", "stream-event-name"),
+    evname:
+      D.ce("span").sa("class", "stream-event-name").add(D.ct(entry.event)),
     suser: D.cf(),
     user: D.ce("a"),
     tgt: D.ce("ul").sa("class", "stream-event-target")
   };
-  if (API.getType(entry) === "delete") {
-    var status = entry.delete.status || entry.delete.direct_message;
-    nd.root.dataset.stream_event_type = "delete";
-    nd.evname.add(D.ct("delete"));
+  // source
+  if (entry.event === "delete") {
     nd.user.sa("class", "user_id");
-    nd.user.sa("href", U.ROOT + status.user_id + "@").
-      add(D.ct(status.user_id));
+    nd.user.sa("href", U.ROOT + user.id + "@").add(D.ct(user.id));
     nd.suser.add(D.ct(" by "), nd.user, D.ct("@"))
   } else {
-    nd.root.stream_event_type = entry.event;
-    nd.evname.add(D.ct(entry.event));
     nd.user.sa("class", "screen_name");
-    nd.user.sa("href", U.ROOT + entry.source.screen_name).
-      add(D.ct(entry.source.screen_name));
+    nd.user.sa("href", U.ROOT + user.screen_name).add(D.ct(user.screen_name));
     nd.suser.add(D.ct(" by @"), nd.user)
   }
+  // target
   if ("target_object" in entry) {
     nd.tgt.add(V.main.newTweet(entry.target_object, my));
   } else if ("target" in entry) {
     nd.tgt.add(V.main.newUser(entry.target, my));
-  } else if (API.getType(entry) === "delete") {
-    var status = entry.delete.status || entry.delete.direct_message;
+  } else if (entry.event === "delete") {
     nd.tgt.add(D.ce("li").sa("class", "stream-event-content").
-      add(D.ct(status.id)));
+      add(D.ct(entry.type + ":" + entry.delete_target.id)));
   }
-  nd.root.add(
-    nd.tgt,
-    nd.src.add(nd.evname, nd.suser)
-  );
-  return nd.root;
+  return nd.root.add(nd.tgt, nd.src.add(nd.evname, nd.suser));
 };
 
 // Render view of list of settings
