@@ -2286,10 +2286,12 @@ V.main.showStream.open = function(url, my) {
       return ev.target.close();
     }
     var msg = ev.data.trim();
-    try { var json = JSON.parse(msgbuf += msg); } catch(e) {}
+    var json = T.jsonNumstr(msgbuf += msg);
     if (json !== undefined) {
       if (["rt", "tweet"].indexOf(API.getType(json)) >= 0) {
         insw(V.main.newTweet(json, my));
+      } else if ("direct_message" in json) {
+        insw(V.main.newTweet(json.direct_message, my));
       } else if (API.getType(json) === "friends") {
       } else {
         insw(V.main.newStreamEntry(json, my) || O.htmlify(json));
@@ -2325,11 +2327,12 @@ V.main.newStreamEntry = function(entry, my) {
     tgt: D.ce("ul").sa("class", "stream-event-target")
   };
   if (API.getType(entry) === "delete") {
+    var status = entry.delete.status || entry.delete.direct_message;
     nd.root.dataset.stream_event_type = "delete";
     nd.evname.add(D.ct("delete"));
     nd.user.sa("class", "user_id");
-    nd.user.sa("href", U.ROOT + entry.delete.status.user_id_str + "@").
-      add(D.ct(entry.delete.status.user_id_str));
+    nd.user.sa("href", U.ROOT + status.user_id + "@").
+      add(D.ct(status.user_id));
     nd.suser.add(D.ct(" by "), nd.user, D.ct("@"))
   } else {
     nd.root.stream_event_type = entry.event;
@@ -2344,8 +2347,9 @@ V.main.newStreamEntry = function(entry, my) {
   } else if ("target" in entry) {
     nd.tgt.add(V.main.newUser(entry.target, my));
   } else if (API.getType(entry) === "delete") {
+    var status = entry.delete.status || entry.delete.direct_message;
     nd.tgt.add(D.ce("li").sa("class", "stream-event-content").
-      add(D.ct("tweet:" + entry.delete.status.id_str)));
+      add(D.ct(status.id)));
   }
   nd.root.add(
     nd.tgt,
