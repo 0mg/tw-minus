@@ -721,6 +721,15 @@ T.userQryStr = function(user_name_or_id) {
     return "screen_name=" + s;
   }
 };
+T.jsonParse = function() {
+  try { return JSON.parse.apply(JSON, arguments); } catch(e) { return; }
+};
+T.jsonNumstr = function(jsontext) {
+  var json = T.jsonParse(jsontext), numstr;
+  if (json === undefined) return;
+  numstr = jsontext.replace(/"((\\[^]|[^])*?)"|([-\d][-+.eE\d]*)/g, '"$1$3"');
+  return T.jsonParse(numstr);
+};
 
 // XHR Functions
 X = {};
