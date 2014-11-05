@@ -26,3 +26,4 @@ L.twMinusIsOnWeb = "PORT" in process.env;
 L.PORT = L.twMinusIsOnWeb ? process.env.PORT | 0 : 3000;
 L.TW_MINUS_URL = process.env.URL || "http://localhost:" + L.PORT;
 L.TW_API_URL = "https://api.twitter.com";
+L.TW_STREAM_URL = "https://userstream.twitter.com";

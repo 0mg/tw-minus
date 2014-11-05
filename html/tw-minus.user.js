@@ -4,7 +4,7 @@
 // ==/UserScript==
 "use strict";
 
-var U, C, D, O, T, P, X, V, API, LS;
+var U, C, D, O, T, P, X, V, API, LS, WS;
 
 // CONST VALUE
 C = {};
@@ -721,6 +721,15 @@ T.userQryStr = function(user_name_or_id) {
     return "screen_name=" + s;
   }
 };
+T.jsonParse = function() {
+  try { return JSON.parse.apply(JSON, arguments); } catch(e) { return; }
+};
+T.jsonNumstr = function(jsontext) {
+  var json = T.jsonParse(jsontext), numstr;
+  if (json === undefined) return;
+  numstr = jsontext.replace(/"((\\[^]|[^])*?)"|([-\d][-+.eE\d]*)/g, '"$1$3"');
+  return T.jsonParse(numstr);
+};
 
 // XHR Functions
 X = {};
@@ -889,6 +898,47 @@ X.getX = function get(url, f, b) {
     D.rm(script);
   };
   D.q("body").add(script);
+};
+
+// WebSocket
+WS = {};
+WS.format = function(method, url, q) {
+  var auth = X.getOAuthHeader(method, url, q, url.oauthPhase);
+  var msg = JSON.stringify({
+    method: method,
+    url: url,
+    data: q,
+    headers: { authorization: auth }
+  });
+  return msg;
+};
+WS.onopen = function(f) { if (f) f(this); };
+WS.onmessage = function(f) { if (f) f(this); };
+WS.onerror = function(f) { if (f) f(this); };
+WS.onclose = function(f) { if (f) f(this); };
+// XHR GET/POST via WebSocket
+WS.open = function(onOpen, onEnd, onMsg, onErr) {
+  var protocol = location.protocol === "http:" ? "ws:" : "wss:";
+  var ws = new WebSocket(protocol + "//" + location.host);
+  ws.addEventListener("open",
+    function(ev) { WS.onopen.call(ev, onOpen); });
+  ws.addEventListener("message",
+    function(ev) { WS.onmessage.call(ev, onMsg); });
+  ws.addEventListener("error",
+    function(ev) { WS.onerror.call(ev, onErr); });
+  ws.addEventListener("close",
+    function(ev) { WS.onclose.call(ev, onEnd); });
+  return ws;
+};
+WS.get = function(ws, url) {
+  var method = "GET", q = ""; url = T.fixURL(url);
+  ws.send(WS.format(method, url, q));
+  V.misc.onXHRStart(method, url, q);
+};
+WS.post = function(ws, url, q) {
+  var method = "POST"; q = T.strQry(q);
+  ws.send(WS.format(method, url, q));
+  V.misc.onXHRStart(method, url, q);
 };
 
 // Twitter API Functions
@@ -1143,6 +1193,17 @@ API.urls.init = function() {
       1.1: "/1.1/help/configuration"
     })
   };
+  urls.stream = {
+    user: uv({
+      1.1: "https://userstream.twitter.com/1.1/user"
+    }),
+    sample: uv({
+      1.1: "https://userstream.twitter.com/1.1/statuses/sample"
+    }),
+    filter: uv({
+      1.1: "https://userstream.twitter.com/1.1/statuses/filter"
+    })
+  };
   API.urls.init = null;
   return urls;
 };
@@ -1201,6 +1262,9 @@ API.getType = function getType(data) {
     if (data.sender) return "dmsg";
   }
   if ("query" in data) return "svs";
+  if ("friends_str" in data) return "friends";
+  if ("delete" in data) return "delete";
+  if ("event" in data) return "event";
   if (data.errors) return "error";
   return "unknown object";
 };
@@ -1868,8 +1932,59 @@ V.init.CSS = '\
   }\
   img.emoji {\
     width: 1em;\
+  }'
+  + // UserStream
+  '\
+  hr {\
+    margin: 0;\
+    border: 0 solid silver;\
+    border-width: 1px 0 0;\
   }\
-'.replace(/\s+/g, " ");
+  #timeline > li, .stream-event-target > li {\
+    list-style: none;\
+  }\
+  .stream-entry {\
+    position: relative;\
+    border-bottom: 1px solid silver;\
+  }\
+  .stream-entry .tweet,\
+  .stream-entry .user {\
+    border: 0;\
+  }\
+  .stream-syslog {\
+    padding-left: 1ex;\
+    border-bottom: 1px solid silver;\
+    background: #eee;\
+    color: gray;\
+  }\
+  .stream-fragment {\
+    padding: 1ex;\
+    border-bottom: 1px solid;\
+    font-size: x-small;\
+    background: #fdfdfd;\
+    color: silver;\
+  }\
+  .stream-fragment:empty {\
+    display: none;\
+  }\
+  .stream-event-source {\
+    position: absolute;\
+    bottom: 0; right: 0;\
+    padding: 1ex;\
+    line-height: 1;\
+    color: #aaa;\
+    background: #fdfdfd;\
+  }\
+  .stream-event-name {\
+    font-weight: bold;\
+  }\
+  .stream-event-target {\
+    background: #fdfdfd;\
+  }\
+  .stream-event-content {\
+    padding: 1ex;\
+    color: gray;\
+  }'.replace(/\s+/g, " ");
 
 // Clear all node and set new one
 V.init.initNode = function(my) {
@@ -1948,6 +2063,15 @@ V.main.showPage.on1 = function(hash, q, my) {
     break;
   case "users":
     D.q("#main").add(it.newUsers(my));
+    break;
+  case "friends":
+    it.showStream(API.urls.stream.user()() + "?" + q +
+      "&stringify_friend_ids=true", my);
+    break;
+  case "public_timeline":
+    it.showStream(q ?
+      API.urls.stream.filter()() + "?" + q :
+      API.urls.stream.sample()(), my);
     break;
   case "lists":
     it.showLists(API.urls.lists.all()() + "?" + q +
@@ -2124,6 +2248,113 @@ V.main.showPage.on3 = function(hash, q, my) {
       V.outline.showProfileOutline(hash[0], my, 1);
     }
   }
+};
+
+// Render view of stream.twitter
+V.main.showStream = function fn(url, my) {
+  var ws;
+  var nd = {
+    open: D.ce("button").add(D.ct("Restart")),
+    stop: D.ce("button").add(D.ct("Stop"))
+  };
+  nd.open.addEventListener("click", function() {
+    D.ev(nd.stop, "click"); ws = fn.open(url, my);
+  });
+  nd.stop.addEventListener("click", function() { ws && ws.close(); });
+  D.q("#subaction-inner-1").add(nd.open, nd.stop);
+  D.ev(nd.open, "click");
+  D.q("#main").add(D.ce("ol").sa("id", "timeline"));
+};
+V.main.showStream.open = function(url, my) {
+  var insw = function(msg, sp) {
+    D.q("#timeline").ins(
+      msg instanceof Node ? msg :
+      sp ? D.ce("li").sa("class", "stream-syslog").add(D.ct(msg)) :
+      D.ce("li").sa("class", "stream-fragment").add(D.ct(msg))
+    );
+  };
+  var msgbuf = "";
+  var onOpen = function(ev) {
+    insw("started", 1);
+    WS.get(ws, url);
+  };
+  var onMsg = function(ev) {
+    if (ev.data instanceof Blob) {
+      insw(msgbuf); msgbuf = "";
+      if (ev.data.size) insw("request error", 1);
+      else insw("finished", 1);
+      return ev.target.close();
+    }
+    var msg = ev.data.trim();
+    var json = T.jsonNumstr(msgbuf += msg);
+    if (json !== undefined) {
+      if (["rt", "tweet"].indexOf(API.getType(json)) >= 0) {
+        insw(V.main.newTweet(json, my));
+      } else if ("direct_message" in json) {
+        insw(V.main.newTweet(json.direct_message, my));
+      } else if (API.getType(json) === "friends") {
+      } else {
+        insw(V.main.newStreamEntry(json, my) || O.htmlify(json));
+      }
+      msgbuf = "";
+    } else if (msg === "" && msgbuf || msgbuf.length > 1e5) {
+      insw(msgbuf);
+      insw("buffer error", 1);
+      msgbuf = "";
+    } else {
+      insw(D.ce("hr"));
+    }
+  };
+  var onErr = function() {
+    insw(msgbuf); msgbuf = "";
+    insw("socket error", 1);
+  };
+  var onEnd = function() {
+    insw(msgbuf); msgbuf = "";
+    insw("stopped", 1);
+  };
+  var ws = WS.open(onOpen, onEnd, onMsg, onErr);
+  return ws;
+};
+V.main.newStreamEntry = function(entry, my) {
+  if (API.getType(entry) === "delete") {
+    var delete_type = Object.keys(entry["delete"])[0];
+    var data = entry["delete"][delete_type];
+    entry.event = "delete";
+    entry.type = delete_type;
+    entry.source = { id: data.user_id };
+    entry.delete_target = { id: data.id };
+  }
+  var user = entry.source;
+  var nd = {
+    root: D.ce("li").sa("class", "stream-entry " + entry.event),
+    src: D.ce("p").sa("class", "stream-event-source"),
+    evname:
+      D.ce("span").sa("class", "stream-event-name").add(D.ct(entry.event)),
+    suser: D.cf(),
+    user: D.ce("a"),
+    tgt: D.ce("ul").sa("class", "stream-event-target")
+  };
+  // source
+  if (entry.event === "delete") {
+    nd.user.sa("class", "user_id");
+    nd.user.sa("href", U.ROOT + user.id + "@").add(D.ct(user.id));
+    nd.suser.add(D.ct(" by "), nd.user, D.ct("@"))
+  } else {
+    nd.user.sa("class", "screen_name");
+    nd.user.sa("href", U.ROOT + user.screen_name).add(D.ct(user.screen_name));
+    nd.suser.add(D.ct(" by @"), nd.user)
+  }
+  // target
+  if ("target_object" in entry) {
+    nd.tgt.add(V.main.newTweet(entry.target_object, my));
+  } else if ("target" in entry) {
+    nd.tgt.add(V.main.newUser(entry.target, my));
+  } else if (entry.event === "delete") {
+    nd.tgt.add(D.ce("li").sa("class", "stream-event-content").
+      add(D.ct(entry.type + ":" + entry.delete_target.id)));
+  }
+  return nd.root.add(nd.tgt, nd.src.add(nd.evname, nd.suser));
 };
 
 // Render view of list of settings
@@ -2803,26 +3034,9 @@ V.main.rendUsers = function(data, my, mode) {
   var basicCursor = !idsCursor && !pageCursor;
   var users_list = D.ce("ul").sa("id", "users");
   users && users.forEach(function(user) {
-    var lu = {
-      root: D.ce("li").sa("class", "user"),
-      screen_name: D.ce("a").sa("href", U.ROOT + user.screen_name).
-        sa("class", "screen_name").add(D.ct(user.screen_name)),
-      icon: D.ce("img").sa("class", "user-icon").
-        sa("src", user.profile_image_url_https).sa("alt", user.screen_name),
-      name: D.ce("span").sa("class", "name").add(D.ct(T.decodeHTML(user.name))),
-      description: D.ce("p").sa("class", "description").
-        add(D.tweetize(user.description, user.entities.description)),
-      created_at: D.ce("a").sa("class", "created_at").
-        add(D.ct(T.gapTime(new Date(user.created_at))))
-    };
-    if (user.protected) lu.root.classList.add("protected");
-    if (user.verified) lu.root.classList.add("verified");
-    if (user.url) lu.created_at.href = user.entities.url.urls[0].expanded_url;
-    users_list.add(lu.root.add(
-      lu.screen_name, lu.icon, lu.name, lu.description,
-      D.ce("span").sa("class", "meta").add(lu.created_at),
-      followerRequests ? V.panel.makeReqDecider(user): D.cf()
-    ));
+    var card = V.main.newUser(user);
+    if (followerRequests) card.add(V.panel.makeReqDecider(user));
+    users_list.add(card);
   });
 
   D.empty(D.q("#cursor"));
@@ -2840,6 +3054,31 @@ V.main.rendUsers = function(data, my, mode) {
     idsCursor ? V.main.cursorIdsPopState:
     pageCursor ? undefined: undefined
   );
+};
+V.main.newUser = function(user) {
+  var lu = {
+    root: D.ce("li").sa("class", "user"),
+    screen_name: D.ce("a").sa("href", U.ROOT + user.screen_name).
+      sa("class", "screen_name").add(D.ct(user.screen_name)),
+    icon: D.ce("img").sa("class", "user-icon").
+      sa("src", user.profile_image_url_https).sa("alt", user.screen_name),
+    name: D.ce("span").sa("class", "name").add(D.ct(T.decodeHTML(user.name))),
+    description: D.ce("p").sa("class", "description").
+      add(D.tweetize(user.description, (user.entities || []).description)),
+    created_at: D.ce("a").sa("class", "created_at").
+      add(D.ct(T.gapTime(new Date(user.created_at))))
+  };
+  if (user.protected) lu.root.classList.add("protected");
+  if (user.verified) lu.root.classList.add("verified");
+  if (user.url) {
+    lu.created_at.href = user.entities ?
+      user.entities.url.urls[0].expanded_url : user.url;
+  }
+  lu.root.add(
+    lu.screen_name, lu.icon, lu.name, lu.description,
+    D.ce("span").sa("class", "meta").add(lu.created_at)
+  );
+  return lu.root;
 };
 
 V.misc = {};
@@ -3203,6 +3442,7 @@ V.misc.showCursorPage = function(data) {
 
 // show xhr state tip
 V.misc.onXHRStart = function(method, url, q) {
+  if (document.readyState !== "complete") return;
   var loading = D.ce("li").sa("class", "xhr-state").add(D.ct("loading.."));
   loading.classList.add("loading");
   D.q("#xhr-statuses").add(loading);
@@ -3210,6 +3450,7 @@ V.misc.onXHRStart = function(method, url, q) {
   return loading;
 };
 V.misc.onXHREnd = function(success, xhr, method, url, q) {
+  if (document.readyState !== "complete") return;
   var s = D.q(".xhr-state.loading");
   if (!s) s = V.misc.onXHRStart(method, url, q);
   s.classList.remove("loading");
