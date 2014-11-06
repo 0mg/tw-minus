@@ -1262,7 +1262,7 @@ API.getType = function getType(data) {
     if (data.sender) return "dmsg";
   }
   if ("query" in data) return "svs";
-  if ("friends_str" in data) return "friends";
+  if ("friends" in data) return "friends";
   if ("delete" in data) return "delete";
   if ("event" in data) return "event";
   if (data.errors) return "error";
@@ -2065,8 +2065,7 @@ V.main.showPage.on1 = function(hash, q, my) {
     D.q("#main").add(it.newUsers(my));
     break;
   case "friends":
-    it.showStream(API.urls.stream.user()() + "?" + q +
-      "&stringify_friend_ids=true", my);
+    it.showStream(API.urls.stream.user()() + "?" + q, my);
     break;
   case "public_timeline":
     it.showStream(q ?
@@ -2088,12 +2087,10 @@ V.main.showPage.on1 = function(hash, q, my) {
     it.showTL(API.urls.favorites.list()() + "?" + q, my);
     break;
   case "following":
-    it.showUsersByIds(API.urls.users.friends_ids()() + "?" + q +
-      "&stringify_ids=true", my);
+    it.showUsersByIds(API.urls.users.friends_ids()() + "?" + q, my);
     break;
   case "followers":
-    it.showUsersByIds(API.urls.users.followers_ids()() + "?" + q +
-      "&stringify_ids=true", my);
+    it.showUsersByIds(API.urls.users.followers_ids()() + "?" + q, my);
     break;
   case "mentions":
     it.showTL(API.urls.timeline.mentions()() + "?" + q, my);
@@ -2151,12 +2148,10 @@ V.main.showPage.on2 = function(hash, q, my) {
 
   } else if (hash[0] === "users") switch (hash[1]) {
   case "muting":
-    it.showUsersByIds(API.urls.mutes.ids()() + "?" + q +
-      "&stringify_ids=true", my);
+    it.showUsersByIds(API.urls.mutes.ids()() + "?" + q, my);
     break;
   case "blocking":
-    it.showUsersByIds(API.urls.blocking.ids()() + "?" + q +
-      "&stringify_ids=true", my);
+    it.showUsersByIds(API.urls.blocking.ids()() + "?" + q, my);
     break;
 
   } else switch (hash[1]) {
@@ -2171,12 +2166,12 @@ V.main.showPage.on2 = function(hash, q, my) {
     break;
   case "following":
     it.showUsersByIds(API.urls.users.friends_ids()() + "?" + q +
-      "&screen_name=" + hash[0] + "&stringify_ids=true", my);
+      "&screen_name=" + hash[0], my);
     V.outline.showProfileOutline(hash[0], my, 3);
     break;
   case "followers":
     it.showUsersByIds(API.urls.users.followers_ids()() + "?" + q +
-      "&screen_name=" + hash[0] + "&stringify_ids=true", my);
+      "&screen_name=" + hash[0], my);
     V.outline.showProfileOutline(hash[0], my, 3);
     break;
   case "lists":
@@ -2948,7 +2943,7 @@ V.main.settingFollow = function(my) {
 // step to render users list by ids
 V.main.showUsersByIds = function(url, my, mode) {
   var onScs = function(xhr) {
-    var data = JSON.parse(xhr.responseText);
+    var data = T.jsonNumstr(xhr.responseText);
     V.main.showUsersByLookup(data, url, my, mode);
   };
   // set ?count=<max>
@@ -2973,9 +2968,9 @@ V.main.showUsersByLookup = function(data, url, my, mode) {
   }
   // get users data with ids
   var onScs = function(xhr) {
-    var users = JSON.parse(xhr.responseText); // users:[1, 23, 77]
+    var users = T.jsonNumstr(xhr.responseText); // users:[1, 23, 77]
     users.sort(function(a, b) {
-      return sliced_ids.indexOf(a.id_str) - sliced_ids.indexOf(b.id_str);
+      return sliced_ids.indexOf(a.id) - sliced_ids.indexOf(b.id);
     });
     object["users"] = users;
     LS.state.save("ids_object", object);
@@ -4642,16 +4637,15 @@ V.outline.showSearchPanel = function(query) {
 
   // [Delete]
   nd.del.addEventListener("click", function() {
-    return sslist.some(function(item, i) {
+    sslist.some(function(item, i) {
       var istr = nd.search.value;
-      if (istr === item.query) {
-        return X.post(API.urls.search.saved.destroy()(item.id_str), "",
-          function() {
-            sslist.splice(i, 1);
-            LS.save("saved_searches", sslist);
-            updSSNodes();
-          });
-      }
+      if (istr !== item.query) return false;
+      X.post(API.urls.search.saved.destroy()(item.id_str), "", function() {
+        sslist.splice(i, 1);
+        LS.save("saved_searches", sslist);
+        updSSNodes();
+      });
+      return true;
     });
   });
 
