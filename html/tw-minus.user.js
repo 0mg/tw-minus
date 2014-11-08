@@ -368,47 +368,7 @@ D.ev = function(e, s) {
   return e;
 };
 D.HTML_ENTITIES = {
-  nbsp: 160, iexcl: 161, cent: 162, pound: 163, curren: 164, yen: 165,
-  brvbar: 166, sect: 167, uml: 168, copy: 169, ordf: 170, laquo: 171, not: 172,
-  shy: 173, reg: 174, macr: 175, deg: 176, plusmn: 177, sup2: 178, sup3: 179,
-  acute: 180, micro: 181, para: 182, middot: 183, cedil: 184, sup1: 185,
-  ordm: 186, raquo: 187, frac14: 188, frac12: 189, frac34: 190, iquest: 191,
-  Agrave: 192, Aacute: 193, Acirc: 194, Atilde: 195, Auml: 196, Aring: 197,
-  AElig: 198, Ccedil: 199, Egrave: 200, Eacute: 201, Ecirc: 202, Euml: 203,
-  Igrave: 204, Iacute: 205, Icirc: 206, Iuml: 207, ETH: 208, Ntilde: 209,
-  Ograve: 210, Oacute: 211, Ocirc: 212, Otilde: 213, Ouml: 214, times: 215,
-  Oslash: 216, Ugrave: 217, Uacute: 218, Ucirc: 219, Uuml: 220, Yacute: 221,
-  THORN: 222, szlig: 223, agrave: 224, aacute: 225, acirc: 226, atilde: 227,
-  auml: 228, aring: 229, aelig: 230, ccedil: 231, egrave: 232, eacute: 233,
-  ecirc: 234, euml: 235, igrave: 236, iacute: 237, icirc: 238, iuml: 239,
-  eth: 240, ntilde: 241, ograve: 242, oacute: 243, ocirc: 244, otilde: 245,
-  ouml: 246, divide: 247, oslash: 248, ugrave: 249, uacute: 250, ucirc: 251,
-  uuml: 252, yacute: 253, thorn: 254, yuml: 255, fnof: 402, Alpha: 913,
-  Beta: 914, Gamma: 915, Delta: 916, Epsilon: 917, Zeta: 918, Eta: 919,
-  Theta: 920, Iota: 921, Kappa: 922, Lambda: 923, Mu: 924, Nu: 925, Xi: 926,
-  Omicron: 927, Pi: 928, Rho: 929, Sigma: 931, Tau: 932, Upsilon: 933, Phi: 934,
-  Chi: 935, Psi: 936, Omega: 937, alpha: 945, beta: 946, gamma: 947, delta: 948,
-  epsilon: 949, zeta: 950, eta: 951, theta: 952, iota: 953, kappa: 954,
-  lambda: 955, mu: 956, nu: 957, xi: 958, omicron: 959, pi: 960, rho: 961,
-  sigmaf: 962, sigma: 963, tau: 964, upsilon: 965, phi: 966, chi: 967, psi: 968,
-  omega: 969, thetasym: 977, upsih: 978, piv: 982, bull: 8226, hellip: 8230,
-  prime: 8242, Prime: 8243, oline: 8254, frasl: 8260, weierp: 8472, image: 8465,
-  real: 8476, trade: 8482, alefsym: 8501, larr: 8592, uarr: 8593, rarr: 8594,
-  darr: 8595, harr: 8596, crarr: 8629, lArr: 8656, uArr: 8657, rArr: 8658,
-  dArr: 8659, hArr: 8660, forall: 8704, part: 8706, exist: 8707, empty: 8709,
-  nabla: 8711, isin: 8712, notin: 8713, ni: 8715, prod: 8719, sum: 8721,
-  minus: 8722, lowast: 8727, radic: 8730, prop: 8733, infin: 8734, ang: 8736,
-  and: 8743, or: 8744, cap: 8745, cup: 8746, int: 8747, there4: 8756, sim: 8764,
-  cong: 8773, asymp: 8776, ne: 8800, equiv: 8801, le: 8804, ge: 8805, sub: 8834,
-  sup: 8835, nsub: 8836, sube: 8838, supe: 8839, oplus: 8853, otimes: 8855,
-  perp: 8869, sdot: 8901, lceil: 8968, rceil: 8969, lfloor: 8970, rfloor: 8971,
-  lang: 9001, rang: 9002, loz: 9674, spades: 9824, clubs: 9827, hearts: 9829,
-  diams: 9830, quot: 34, amp: 38, apos: 39, lt: 60, gt: 62, OElig: 338,
-  oelig: 339, Scaron: 352, scaron: 353, Yuml: 376, circ: 710, tilde: 732,
-  ensp: 8194, emsp: 8195, thinsp: 8201, zwnj: 8204, zwj: 8205, lrm: 8206,
-  rlm: 8207, ndash: 8211, mdash: 8212, lsquo: 8216, rsquo: 8217, sbquo: 8218,
-  ldquo: 8220, rdquo: 8221, bdquo: 8222, dagger: 8224, Dagger: 8225,
-  permil: 8240, lsaquo: 8249, rsaquo: 8250, euro: 8364
+  amp: 38, lt: 60, gt: 62
 };
 // eg. 'http://t.co' to '<a href="http://t.co">http://t.co</a>'
 D.tweetize = function(innerText, entities, exties) {
@@ -649,8 +609,6 @@ T.decodeHTML = function(innerText) {
   innerText = innerText || "";
   var re = {
     entity: /^&([a-zA-Z]+);/,
-    entityDec: /^&#(\d+);/,
-    entityHex: /^&#x([\da-fA-F]+);/,
     text: /^[^&]+/
   };
   var s, str, ctx = innerText, xssText = "";
@@ -658,12 +616,6 @@ T.decodeHTML = function(innerText) {
     if (s = re.entity.exec(ctx)) {
       str = s[0];
       xssText += T.dentity(s[1]) || str;
-    } else if (s = re.entityDec.exec(ctx)) {
-      str = s[0];
-      xssText += T.dentityDec(+s[1]) || str;
-    } else if (s = re.entityHex.exec(ctx)) {
-      str = s[0];
-      xssText += T.dentityDec(parseInt(s[1], 16)) || str;
     } else if (s = re.text.exec(ctx)) {
       str = s[0];
       xssText += str;
@@ -675,16 +627,12 @@ T.decodeHTML = function(innerText) {
   }
   return xssText;
 };
-T.dentityDec = function dentityDec(dec) {
-  if (typeof dec !== "number") return false;
-  return String.fromCharCode(dec);
-};
 T.dentity = function dentity(entity) {
   var charCode = D.HTML_ENTITIES[entity];
   if (typeof charCode === "number") return String.fromCharCode(charCode);
   return null;
 };
-T.decrement = function decrement(s) {
+T.decrement = function(s) {
   s = s.split("");
   for (var i = s.length - 1; i >= 0; --i) {
     var n = s[i] - 1;
@@ -2147,7 +2095,7 @@ V.main.showPage.on2 = function(hash, q, my) {
     break;
   default:
     if (hash[0] === "status" || hash[0] === "statuses") {
-      it.showTL(API.urls.tweet.get()(hash[1]) + "?" + q, my);
+      it.showTL(API.urls.tweet.get()() + "?" + q + "&id=" + hash[1], my);
     } else {
       it.showTL(API.urls.lists.tweets()() + "?" + q +
         "&owner_screen_name=" + hash[0] +
@@ -2205,7 +2153,7 @@ V.main.showPage.on3 = function(hash, q, my) {
     break;
   default:
     if (hash[1] === "status" || hash[1] === "statuses") {
-      it.showTL(API.urls.tweet.get()(hash[2]) + "?" + q, my);
+      it.showTL(API.urls.tweet.get()() + "?" + q + "&id=" + hash[2], my);
       V.outline.showProfileOutline(hash[0], my, 1);
     }
   }
