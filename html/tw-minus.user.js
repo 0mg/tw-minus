@@ -948,15 +948,13 @@ API.urls.init = function() {
   var urls = API.urls, uv = API.urlvers;
   urls.oauth = {
     request: uv({
-      1: [O.sa(function() { return "/oauth/request_token"; },
-        { oauthPhase: "get_request_token" }), ""]
+      1: ["/oauth/request_token$", { oauthPhase: "get_request_token" }]
     }),
     authorize: uv({
-      1: ["/oauth/authorize", ""]
+      1: "/oauth/authorize$"
     }),
     access: uv({
-      1: [O.sa(function() { return "/oauth/access_token"; },
-        { oauthPhase: "get_access_token" }), ""]
+      1: ["/oauth/access_token$", { oauthPhase: "get_access_token" }]
     })
   };
   urls.urls = {
@@ -1090,13 +1088,13 @@ API.urls.init = function() {
         1.1: "/1.1/saved_searches/list"
       }),
       show: uv({
-        1.1: function(id) { return "/1.1/saved_searches/show/" + id; }
+        1.1: "/1.1/saved_searches/show/#"
       }),
       create: uv({
         1.1: "/1.1/saved_searches/create"
       }),
       destroy: uv({
-        1.1: function(id) { return "/1.1/saved_searches/destroy/" + id; }
+        1.1: "/1.1/saved_searches/destroy/#"
       }),
     }
   };
@@ -1173,19 +1171,19 @@ API.urls.init = function() {
   };
   urls.tweet = {
     get: uv({
-      1.1: function(id) { return "/1.1/statuses/show/" + id; }
+      1.1: "/1.1/statuses/show"
     }),
     post: uv({
       1.1: "/1.1/statuses/update"
     }),
     retweet: uv({
-      1.1: function(id) { return "/1.1/statuses/retweet/" + id; }
+      1.1: "/1.1/statuses/retweet/#"
     }),
     upload: uv({
       1.1: "/1.1/statuses/update_with_media"
     }),
     destroy: uv({
-      1.1: function(id) { return "/1.1/statuses/destroy/" + id; }
+      1.1: "/1.1/statuses/destroy/#"
     })
   };
   urls.help = {
@@ -1207,37 +1205,19 @@ API.urls.init = function() {
   API.urls.init = null;
   return urls;
 };
-API.urlvers = function fn(uv) {
+API.urlvers = function fn(uo) {
   return function(ver) {
-    var url = ver === undefined ? uv[API.V] || uv[Object.keys(uv)[0]]: uv[ver];
-    switch (typeof url) {
-    case "string": return fn.txurl.bind(url);
-    case "function": return fn.fnurl.bind(url);
-    case "object": if (Array.isArray(url)) return fn.oburl.bind(url); return;
-    }
+    var orl = ver === undefined ? uo[API.V] || uo[Object.keys(uo)[0]] : uo[ver];
+    return function() {
+      var args = [].slice.call(arguments);
+      var brl = Array.isArray(orl) ? orl[0] : orl;
+      var url = brl.replace(/#/g, function() { return args.shift(); });
+      var ext = args.shift(); if (ext === undefined) ext = ".json";
+      if (/\$$/.test(url)) url = url.replace(/\$$/, ext = "");
+      if (Array.isArray(orl)) return O.sa(new String(url + ext), orl[1]);
+      return url + ext;
+    };
   };
-};
-API.urlvers.txurl = function(ext) {
-  return this + (ext !== undefined ? ext: ".json");
-};
-API.urlvers.fnurl = function() {
-  var ext = arguments.length > this.length ? arguments[this.length]: ".json";
-  var i, url;
-  if (Object.keys(this).length) {
-    url = new String(this.apply(null, arguments) + ext);
-    for (i in this) url[i] = this[i];
-  } else {
-    url = this.apply(null, arguments) + ext;
-  }
-  return url;
-};
-API.urlvers.oburl = function() {
-  var url = this[0], args = this.slice(1);
-  [].forEach.call(arguments, function(arg, i) { args[i] = arg; });
-  switch (typeof url) {
-  case "string": return API.urlvers.txurl.apply(url, args);
-  case "function": return API.urlvers.fnurl.apply(url, args);
-  }
 };
 // default API version
 API.V = 1.1;
@@ -1262,7 +1242,7 @@ API.getType = function getType(data) {
     if (data.sender) return "dmsg";
   }
   if ("query" in data) return "svs";
-  if ("friends_str" in data) return "friends";
+  if ("friends" in data) return "friends";
   if ("delete" in data) return "delete";
   if ("event" in data) return "event";
   if (data.errors) return "error";
@@ -1714,8 +1694,6 @@ V.init.CSS = '\
     border-style: solid;\
     word-wrap: break-word;\
   }\
-  #status_section {\
-  }\
   #status_profile {\
     box-sizing: border-box;\
     max-width: 500px;\
@@ -1770,10 +1748,6 @@ V.init.CSS = '\
     border: none;\
     border-top: 1px solid silver;\
   }\
-  #timeline {\
-  }\
-  #users {\
-  }\
   #cursor {\
     display: table;\
     width: 100%;\
@@ -1782,16 +1756,8 @@ V.init.CSS = '\
     display: table-cell;\
     text-align: center;\
   }\
-  .cursor_next {\
-  }\
-  .cursor_prev {\
-  }\
   .user-style-bar {\
     border-color: transparent;\
-  }\
-  a.maybe_shorten_url {\
-  }\
-  a.expanded_tco_url {\
   }\
   a.expanded_url {\
     text-decoration: underline;\
@@ -2065,8 +2031,7 @@ V.main.showPage.on1 = function(hash, q, my) {
     D.q("#main").add(it.newUsers(my));
     break;
   case "friends":
-    it.showStream(API.urls.stream.user()() + "?" + q +
-      "&stringify_friend_ids=true", my);
+    it.showStream(API.urls.stream.user()() + "?" + q, my);
     break;
   case "public_timeline":
     it.showStream(q ?
@@ -2088,12 +2053,10 @@ V.main.showPage.on1 = function(hash, q, my) {
     it.showTL(API.urls.favorites.list()() + "?" + q, my);
     break;
   case "following":
-    it.showUsersByIds(API.urls.users.friends_ids()() + "?" + q +
-      "&stringify_ids=true", my);
+    it.showUsersByIds(API.urls.users.friends_ids()() + "?" + q, my);
     break;
   case "followers":
-    it.showUsersByIds(API.urls.users.followers_ids()() + "?" + q +
-      "&stringify_ids=true", my);
+    it.showUsersByIds(API.urls.users.followers_ids()() + "?" + q, my);
     break;
   case "mentions":
     it.showTL(API.urls.timeline.mentions()() + "?" + q, my);
@@ -2151,12 +2114,10 @@ V.main.showPage.on2 = function(hash, q, my) {
 
   } else if (hash[0] === "users") switch (hash[1]) {
   case "muting":
-    it.showUsersByIds(API.urls.mutes.ids()() + "?" + q +
-      "&stringify_ids=true", my);
+    it.showUsersByIds(API.urls.mutes.ids()() + "?" + q, my);
     break;
   case "blocking":
-    it.showUsersByIds(API.urls.blocking.ids()() + "?" + q +
-      "&stringify_ids=true", my);
+    it.showUsersByIds(API.urls.blocking.ids()() + "?" + q, my);
     break;
 
   } else switch (hash[1]) {
@@ -2171,12 +2132,12 @@ V.main.showPage.on2 = function(hash, q, my) {
     break;
   case "following":
     it.showUsersByIds(API.urls.users.friends_ids()() + "?" + q +
-      "&screen_name=" + hash[0] + "&stringify_ids=true", my);
+      "&screen_name=" + hash[0], my);
     V.outline.showProfileOutline(hash[0], my, 3);
     break;
   case "followers":
     it.showUsersByIds(API.urls.users.followers_ids()() + "?" + q +
-      "&screen_name=" + hash[0] + "&stringify_ids=true", my);
+      "&screen_name=" + hash[0], my);
     V.outline.showProfileOutline(hash[0], my, 3);
     break;
   case "lists":
@@ -2406,7 +2367,8 @@ V.main.showLoginUI = function(qs) {
     LS.save("request_token_secret", tokens["oauth_token_secret"]);
     var url = API.urls.oauth.authorize()();
     var request_token = tokens["oauth_token"];
-    location.href = url + "?oauth_token=" + request_token;
+    location.href = "https://api.twitter.com" +
+      url + "?oauth_token=" + request_token;
   };
   var getAcsToken = function() {
     var tokens = T.parseQuery(qs);
@@ -2948,7 +2910,7 @@ V.main.settingFollow = function(my) {
 // step to render users list by ids
 V.main.showUsersByIds = function(url, my, mode) {
   var onScs = function(xhr) {
-    var data = JSON.parse(xhr.responseText);
+    var data = T.jsonNumstr(xhr.responseText);
     V.main.showUsersByLookup(data, url, my, mode);
   };
   // set ?count=<max>
@@ -2973,9 +2935,9 @@ V.main.showUsersByLookup = function(data, url, my, mode) {
   }
   // get users data with ids
   var onScs = function(xhr) {
-    var users = JSON.parse(xhr.responseText); // users:[1, 23, 77]
+    var users = T.jsonNumstr(xhr.responseText); // users:[1, 23, 77]
     users.sort(function(a, b) {
-      return sliced_ids.indexOf(a.id_str) - sliced_ids.indexOf(b.id_str);
+      return sliced_ids.indexOf(a.id) - sliced_ids.indexOf(b.id);
     });
     object["users"] = users;
     LS.state.save("ids_object", object);
@@ -4642,16 +4604,15 @@ V.outline.showSearchPanel = function(query) {
 
   // [Delete]
   nd.del.addEventListener("click", function() {
-    return sslist.some(function(item, i) {
+    sslist.some(function(item, i) {
       var istr = nd.search.value;
-      if (istr === item.query) {
-        return X.post(API.urls.search.saved.destroy()(item.id_str), "",
-          function() {
-            sslist.splice(i, 1);
-            LS.save("saved_searches", sslist);
-            updSSNodes();
-          });
-      }
+      if (istr !== item.query) return false;
+      X.post(API.urls.search.saved.destroy()(item.id_str), "", function() {
+        sslist.splice(i, 1);
+        LS.save("saved_searches", sslist);
+        updSSNodes();
+      });
+      return true;
     });
   });
 
