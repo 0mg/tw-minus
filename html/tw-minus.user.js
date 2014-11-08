@@ -2095,7 +2095,7 @@ V.main.showPage.on2 = function(hash, q, my) {
     break;
   default:
     if (hash[0] === "status" || hash[0] === "statuses") {
-      it.showTL(API.urls.tweet.get()(hash[1]) + "?" + q, my);
+      it.showTL(API.urls.tweet.get()() + "?" + q + "&id=" + hash[1], my);
     } else {
       it.showTL(API.urls.lists.tweets()() + "?" + q +
         "&owner_screen_name=" + hash[0] +
@@ -2153,7 +2153,7 @@ V.main.showPage.on3 = function(hash, q, my) {
     break;
   default:
     if (hash[1] === "status" || hash[1] === "statuses") {
-      it.showTL(API.urls.tweet.get()(hash[2]) + "?" + q, my);
+      it.showTL(API.urls.tweet.get()() + "?" + q + "&id=" + hash[2], my);
       V.outline.showProfileOutline(hash[0], my, 1);
     }
   }
