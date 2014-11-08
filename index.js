@@ -67,7 +67,7 @@ var srvres = {
   },
   forceHTTPS: function(req, res, err) {
     var header = new Header(".txt");
-    header["location"] = L.TW_MINUS_URL + req.url;
+    header["location"] = L.THIS_APP_URL + req.url;
     res.writeHead(302, header);
     res.write(header["location"]);
     res.end();
@@ -95,7 +95,7 @@ srvres.websocket = function(req, browser, rcvdata) {
     });
   };
   var params = rcvdata;
-  if (Object.prototype.toString.call(params) !== "[object Object]") return;
+  if (toString.call(params) !== "[object Object]") return;
   params.url = String(params.url);
   params.data = String(params.data);
   params.headers = Object(params.headers);
@@ -172,23 +172,22 @@ server.listen(L.PORT);
 
 // Server <- request from browser
 server.on("request", function(req, res) {
-  if (L.twMinusIsOnWeb && req.headers["x-forwarded-proto"] !== "https") {
+  if (L.thisAppIsOnWeb && req.headers["x-forwarded-proto"] !== "https") {
+    // Redirect to HTTPS URL
     srvres.forceHTTPS(req, res, "");
     return;
   }
   var data = new Buffer("");
-  var filename = F.fixURLtoFileName(req.url);
-  if (F.isRealFileName(filename)) {
-    // File request
-    filename = filename;
-  } else if (
-    req.method !== "GET" ||
-    req.headers["x-requested-with"] === "XMLHttpRequest"
-  ) {
+  if (req.method !== "GET" ||
+    req.headers["x-requested-with"] === "XMLHttpRequest") {
     // XHR request
     req.on("data", function(d) { data = Buffer.concat([data, d]); });
     req.on("end", function() { srvres.xhr(req, res, data); });
     return;
+  }
+  var filename = F.fixURLtoFileName(req.url);
+  if (F.realfilenames.indexOf(filename) >= 0) {
+    // File request
   } else {
     // 404 Not Found
     filename = F.index_html_path;
