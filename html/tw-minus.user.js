@@ -891,269 +891,8 @@ WS.post = function(ws, url, q) {
 
 // Twitter API Functions
 API = {};
-API.urls = {};
-API.urls.init = function() {
-  var urls = API.urls, uv = API.urlvers;
-  urls.oauth = {
-    request: uv({
-      1: ["/oauth/request_token$", { oauthPhase: "get_request_token" }]
-    }),
-    authorize: uv({
-      1: "/oauth/authorize$"
-    }),
-    access: uv({
-      1: ["/oauth/access_token$", { oauthPhase: "get_access_token" }]
-    })
-  };
-  urls.urls = {
-    resolve: uv({
-      0: "/i/resolve"
-    })
-  };
-  urls.mutes = {
-    mute: uv({
-      1.1: "/1.1/mutes/users/create"
-    }),
-    unmute: uv({
-      1.1: "/1.1/mutes/users/destroy"
-    }),
-    ids: uv({
-      1.1: "/1.1/mutes/users/ids"
-    })
-  };
-  urls.blocking = {
-    list: uv({
-      1.1: "/1.1/blocks/list"
-    }),
-    ids: uv({
-      1.1: "/1.1/blocks/ids"
-    }),
-    add: uv({
-      1.1: "/1.1/blocks/create"
-    }),
-    spam: uv({
-      1.1: "/1.1/users/report_spam"
-    }),
-    remove: uv({
-      1.1: "/1.1/blocks/destroy"
-    })
-  };
-  urls.account = {
-    rate_limit_status: uv({
-      1.1: "/1.1/application/rate_limit_status"
-    }),
-    verify_credentials: uv({
-      1.1: "/1.1/account/verify_credentials"
-    }),
-    update_profile: uv({
-      1.1: "/1.1/account/update_profile"
-    }),
-    update_profile_colors: uv({
-      1.1: "/1.1/account/update_profile_colors"
-    }),
-    update_background_image: uv({
-      1.1: "/1.1/account/update_profile_background_image"
-    }),
-    upload_icon: uv({
-      1.1: "/1.1/account/update_profile_image"
-    }),
-    banner: {
-      upload: uv({
-        1.1: "/1.1/account/update_profile_banner"
-      }),
-      remove: uv({
-        1.1: "/1.1/account/remove_profile_banner"
-      })
-    }
-  };
-  urls.users = {
-    followers_ids: uv({
-      1.1: "/1.1/followers/ids"
-    }),
-    friends_ids: uv({
-      1.1: "/1.1/friends/ids"
-    }),
-    lookup: uv({
-      1.1: "/1.1/users/lookup"
-    }),
-    incoming: uv({
-      1.1: "/1.1/friendships/incoming"
-    }),
-    outgoing: uv({
-      1.1: "/1.1/friendships/outgoing"
-    }),
-    deny: uv({
-      1: "/1/friendships/deny"
-    }),
-    accept: uv({
-      1: "/1/friendships/accept"
-    }),
-    cancel: uv({
-      1: "/1/friendships/cancel"
-    }),
-    friendship: uv({
-      1.1: "/1.1/friendships/show"
-    }),
-    follow: uv({
-      1.1: "/1.1/friendships/create"
-    }),
-    unfollow: uv({
-      1.1: "/1.1/friendships/destroy"
-    }),
-    update: uv({
-      1.1: "/1.1/friendships/update"
-    }),
-    show: uv({
-      1.1: "/1.1/users/show"
-    })
-  };
-  urls.d = {
-    inbox: uv({
-      1.1: "/1.1/direct_messages"
-    }),
-    sent: uv({
-      1.1: "/1.1/direct_messages/sent"
-    }),
-    show: uv({
-      1.1: "/1.1/direct_messages/show"
-    }),
-    create: uv({
-      1.1: "/1.1/direct_messages/new"
-    }),
-    destroy: uv({
-      1.1: "/1.1/direct_messages/destroy"
-    })
-  };
-  urls.search = {
-    tweets: uv({
-      1.1: "/1.1/search/tweets"
-    }),
-    users: uv({
-      1.1: "/1.1/users/search"
-    }),
-    saved: {
-      list: uv({
-        1.1: "/1.1/saved_searches/list"
-      }),
-      show: uv({
-        1.1: "/1.1/saved_searches/show/#"
-      }),
-      create: uv({
-        1.1: "/1.1/saved_searches/create"
-      }),
-      destroy: uv({
-        1.1: "/1.1/saved_searches/destroy/#"
-      }),
-    }
-  };
-  urls.lists = {
-    all: uv({
-      1.1: "/1.1/lists/list"
-    }),
-    list: uv({
-      1.1: "/1.1/lists/ownerships"
-    }),
-    subscriptions: uv({
-      1.1: "/1.1/lists/subscriptions"
-    }),
-    listed: uv({
-      1.1: "/1.1/lists/memberships"
-    }),
-    show: uv({
-      1.1: "/1.1/lists/show"
-    }),
-    tweets: uv({
-      1.1: "/1.1/lists/statuses"
-    }),
-    create: uv({
-      1.1: "/1.1/lists/create"
-    }),
-    update: uv({
-      1.1: "/1.1/lists/update"
-    }),
-    destroy: uv({
-      1.1: "/1.1/lists/destroy"
-    }),
-    follow: uv({
-      1.1: "/1.1/lists/subscribers/create"
-    }),
-    unfollow: uv({
-      1.1: "/1.1/lists/subscribers/destroy"
-    })
-  };
-  urls.lists.users = {
-    members: uv({
-      1.1: "/1.1/lists/members"
-    }),
-    add: uv({
-      1.1: "/1.1/lists/members/create_all"
-    }),
-    remove: uv({
-      1.1: "/1.1/lists/members/destroy_all"
-    }),
-    subscribers: uv({
-      1.1: "/1.1/lists/subscribers"
-    })
-  };
-  urls.timeline = {
-    home: uv({
-      1.1: "/1.1/statuses/home_timeline"
-    }),
-    mentions: uv({
-      1.1: "/1.1/statuses/mentions_timeline"
-    }),
-    user: uv({
-      1.1: "/1.1/statuses/user_timeline"
-    })
-  };
-  urls.favorites = {
-    list: uv({
-      1.1: "/1.1/favorites/list"
-    }),
-    add: uv({
-      1.1: "/1.1/favorites/create"
-    }),
-    remove: uv({
-      1.1: "/1.1/favorites/destroy"
-    })
-  };
-  urls.tweet = {
-    get: uv({
-      1.1: "/1.1/statuses/show"
-    }),
-    post: uv({
-      1.1: "/1.1/statuses/update"
-    }),
-    retweet: uv({
-      1.1: "/1.1/statuses/retweet/#"
-    }),
-    upload: uv({
-      1.1: "/1.1/statuses/update_with_media"
-    }),
-    destroy: uv({
-      1.1: "/1.1/statuses/destroy/#"
-    })
-  };
-  urls.help = {
-    configuration: uv({
-      1.1: "/1.1/help/configuration"
-    })
-  };
-  urls.stream = {
-    user: uv({
-      1.1: "https://userstream.twitter.com/1.1/user"
-    }),
-    sample: uv({
-      1.1: "https://userstream.twitter.com/1.1/statuses/sample"
-    }),
-    filter: uv({
-      1.1: "https://userstream.twitter.com/1.1/statuses/filter"
-    })
-  };
-  API.urls.init = null;
-  return urls;
-};
-API.urlvers = function fn(uo) {
+API.V = 1.1;
+API.genURLfn = function fn(uo) {
   return function(ver) {
     var orl = ver === undefined ? uo[API.V] || uo[Object.keys(uo)[0]] : uo[ver];
     return function() {
@@ -1167,8 +906,273 @@ API.urlvers = function fn(uo) {
     };
   };
 };
-// default API version
-API.V = 1.1;
+API.urls = new function() {
+  var urls = {};
+  urls.oauth = {
+    request: {
+      1: ["/oauth/request_token$", { oauthPhase: "get_request_token" }]
+    },
+    authorize: {
+      1: "/oauth/authorize$"
+    },
+    access: {
+      1: ["/oauth/access_token$", { oauthPhase: "get_access_token" }]
+    }
+  };
+  urls.urls = {
+    resolve: {
+      0: "/i/resolve"
+    }
+  };
+  urls.mutes = {
+    mute: {
+      1.1: "/1.1/mutes/users/create"
+    },
+    unmute: {
+      1.1: "/1.1/mutes/users/destroy"
+    },
+    ids: {
+      1.1: "/1.1/mutes/users/ids"
+    }
+  };
+  urls.blocking = {
+    list: {
+      1.1: "/1.1/blocks/list"
+    },
+    ids: {
+      1.1: "/1.1/blocks/ids"
+    },
+    add: {
+      1.1: "/1.1/blocks/create"
+    },
+    spam: {
+      1.1: "/1.1/users/report_spam"
+    },
+    remove: {
+      1.1: "/1.1/blocks/destroy"
+    }
+  };
+  urls.account = {
+    rate_limit_status: {
+      1.1: "/1.1/application/rate_limit_status"
+    },
+    verify_credentials: {
+      1.1: "/1.1/account/verify_credentials"
+    },
+    update_profile: {
+      1.1: "/1.1/account/update_profile"
+    },
+    update_profile_colors: {
+      1.1: "/1.1/account/update_profile_colors"
+    },
+    update_background_image: {
+      1.1: "/1.1/account/update_profile_background_image"
+    },
+    upload_icon: {
+      1.1: "/1.1/account/update_profile_image"
+    },
+    banner: {
+      upload: {
+        1.1: "/1.1/account/update_profile_banner"
+      },
+      remove: {
+        1.1: "/1.1/account/remove_profile_banner"
+      }
+    }
+  };
+  urls.users = {
+    followers_ids: {
+      1.1: "/1.1/followers/ids"
+    },
+    friends_ids: {
+      1.1: "/1.1/friends/ids"
+    },
+    lookup: {
+      1.1: "/1.1/users/lookup"
+    },
+    incoming: {
+      1.1: "/1.1/friendships/incoming"
+    },
+    outgoing: {
+      1.1: "/1.1/friendships/outgoing"
+    },
+    deny: {
+      1: "/1/friendships/deny"
+    },
+    accept: {
+      1: "/1/friendships/accept"
+    },
+    cancel: {
+      1: "/1/friendships/cancel"
+    },
+    friendship: {
+      1.1: "/1.1/friendships/show"
+    },
+    follow: {
+      1.1: "/1.1/friendships/create"
+    },
+    unfollow: {
+      1.1: "/1.1/friendships/destroy"
+    },
+    update: {
+      1.1: "/1.1/friendships/update"
+    },
+    show: {
+      1.1: "/1.1/users/show"
+    }
+  };
+  urls.d = {
+    inbox: {
+      1.1: "/1.1/direct_messages"
+    },
+    sent: {
+      1.1: "/1.1/direct_messages/sent"
+    },
+    show: {
+      1.1: "/1.1/direct_messages/show"
+    },
+    create: {
+      1.1: "/1.1/direct_messages/new"
+    },
+    destroy: {
+      1.1: "/1.1/direct_messages/destroy"
+    }
+  };
+  urls.search = {
+    tweets: {
+      1.1: "/1.1/search/tweets"
+    },
+    users: {
+      1.1: "/1.1/users/search"
+    },
+    saved: {
+      list: {
+        1.1: "/1.1/saved_searches/list"
+      },
+      show: {
+        1.1: "/1.1/saved_searches/show/#"
+      },
+      create: {
+        1.1: "/1.1/saved_searches/create"
+      },
+      destroy: {
+        1.1: "/1.1/saved_searches/destroy/#"
+      },
+    }
+  };
+  urls.lists = {
+    all: {
+      1.1: "/1.1/lists/list"
+    },
+    list: {
+      1.1: "/1.1/lists/ownerships"
+    },
+    subscriptions: {
+      1.1: "/1.1/lists/subscriptions"
+    },
+    listed: {
+      1.1: "/1.1/lists/memberships"
+    },
+    show: {
+      1.1: "/1.1/lists/show"
+    },
+    tweets: {
+      1.1: "/1.1/lists/statuses"
+    },
+    create: {
+      1.1: "/1.1/lists/create"
+    },
+    update: {
+      1.1: "/1.1/lists/update"
+    },
+    destroy: {
+      1.1: "/1.1/lists/destroy"
+    },
+    follow: {
+      1.1: "/1.1/lists/subscribers/create"
+    },
+    unfollow: {
+      1.1: "/1.1/lists/subscribers/destroy"
+    }
+  };
+  urls.lists.users = {
+    members: {
+      1.1: "/1.1/lists/members"
+    },
+    add: {
+      1.1: "/1.1/lists/members/create_all"
+    },
+    remove: {
+      1.1: "/1.1/lists/members/destroy_all"
+    },
+    subscribers: {
+      1.1: "/1.1/lists/subscribers"
+    }
+  };
+  urls.timeline = {
+    home: {
+      1.1: "/1.1/statuses/home_timeline"
+    },
+    mentions: {
+      1.1: "/1.1/statuses/mentions_timeline"
+    },
+    user: {
+      1.1: "/1.1/statuses/user_timeline"
+    }
+  };
+  urls.favorites = {
+    list: {
+      1.1: "/1.1/favorites/list"
+    },
+    add: {
+      1.1: "/1.1/favorites/create"
+    },
+    remove: {
+      1.1: "/1.1/favorites/destroy"
+    }
+  };
+  urls.tweet = {
+    get: {
+      1.1: "/1.1/statuses/show"
+    },
+    post: {
+      1.1: "/1.1/statuses/update"
+    },
+    retweet: {
+      1.1: "/1.1/statuses/retweet/#"
+    },
+    upload: {
+      1.1: "/1.1/statuses/update_with_media"
+    },
+    destroy: {
+      1.1: "/1.1/statuses/destroy/#"
+    }
+  };
+  urls.help = {
+    configuration: {
+      1.1: "/1.1/help/configuration"
+    }
+  };
+  urls.stream = {
+    user: {
+      1.1: "https://userstream.twitter.com/1.1/user"
+    },
+    sample: {
+      1.1: "https://userstream.twitter.com/1.1/statuses/sample"
+    },
+    filter: {
+      1.1: "https://userstream.twitter.com/1.1/statuses/filter"
+    }
+  };
+  (function fn(o) {
+    for (var i in o) {
+      if (toString.call(o[i]) === "[object Object]") {
+        if (fn(o[i])) o[i] = API.genURLfn(o[i]);
+      } else return true;
+    }
+  })(urls);
+  return urls;
+};
 // get type of *.json
 API.getType = function getType(data) {
   if (!data) return "empty";
@@ -4589,7 +4593,6 @@ V.outline.showSearchPanel = function(query) {
     V.init.initNode(my);
     V.main.showPage(my);
   };
-  API.urls.init();
   if (document.readyState === "complete") editDOM();
   else addEventListener("DOMContentLoaded", function() { editDOM(); });
   if (!API.cc.getCredentials()) {
