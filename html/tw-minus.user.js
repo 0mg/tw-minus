@@ -948,15 +948,13 @@ API.urls.init = function() {
   var urls = API.urls, uv = API.urlvers;
   urls.oauth = {
     request: uv({
-      1: [O.sa(function() { return "/oauth/request_token"; },
-        { oauthPhase: "get_request_token" }), ""]
+      1: ["/oauth/request_token$", { oauthPhase: "get_request_token" }]
     }),
     authorize: uv({
-      1: ["/oauth/authorize", ""]
+      1: "/oauth/authorize$"
     }),
     access: uv({
-      1: [O.sa(function() { return "/oauth/access_token"; },
-        { oauthPhase: "get_access_token" }), ""]
+      1: ["/oauth/access_token$", { oauthPhase: "get_access_token" }]
     })
   };
   urls.urls = {
@@ -1090,13 +1088,13 @@ API.urls.init = function() {
         1.1: "/1.1/saved_searches/list"
       }),
       show: uv({
-        1.1: function(id) { return "/1.1/saved_searches/show/" + id; }
+        1.1: "/1.1/saved_searches/show/#"
       }),
       create: uv({
         1.1: "/1.1/saved_searches/create"
       }),
       destroy: uv({
-        1.1: function(id) { return "/1.1/saved_searches/destroy/" + id; }
+        1.1: "/1.1/saved_searches/destroy/#"
       }),
     }
   };
@@ -1173,19 +1171,19 @@ API.urls.init = function() {
   };
   urls.tweet = {
     get: uv({
-      1.1: function(id) { return "/1.1/statuses/show/" + id; }
+      1.1: "/1.1/statuses/show"
     }),
     post: uv({
       1.1: "/1.1/statuses/update"
     }),
     retweet: uv({
-      1.1: function(id) { return "/1.1/statuses/retweet/" + id; }
+      1.1: "/1.1/statuses/retweet/#"
     }),
     upload: uv({
       1.1: "/1.1/statuses/update_with_media"
     }),
     destroy: uv({
-      1.1: function(id) { return "/1.1/statuses/destroy/" + id; }
+      1.1: "/1.1/statuses/destroy/#"
     })
   };
   urls.help = {
@@ -1207,37 +1205,19 @@ API.urls.init = function() {
   API.urls.init = null;
   return urls;
 };
-API.urlvers = function fn(uv) {
+API.urlvers = function fn(uo) {
   return function(ver) {
-    var url = ver === undefined ? uv[API.V] || uv[Object.keys(uv)[0]]: uv[ver];
-    switch (typeof url) {
-    case "string": return fn.txurl.bind(url);
-    case "function": return fn.fnurl.bind(url);
-    case "object": if (Array.isArray(url)) return fn.oburl.bind(url); return;
-    }
+    var orl = ver === undefined ? uo[API.V] || uo[Object.keys(uo)[0]] : uo[ver];
+    return function() {
+      var args = [].slice.call(arguments);
+      var brl = Array.isArray(orl) ? orl[0] : orl;
+      var url = brl.replace(/#/g, function() { return args.shift(); });
+      var ext = args.shift(); if (ext === undefined) ext = ".json";
+      if (/\$$/.test(url)) url = url.replace(/\$$/, ext = "");
+      if (Array.isArray(orl)) return O.sa(new String(url + ext), orl[1]);
+      return url + ext;
+    };
   };
-};
-API.urlvers.txurl = function(ext) {
-  return this + (ext !== undefined ? ext: ".json");
-};
-API.urlvers.fnurl = function() {
-  var ext = arguments.length > this.length ? arguments[this.length]: ".json";
-  var i, url;
-  if (Object.keys(this).length) {
-    url = new String(this.apply(null, arguments) + ext);
-    for (i in this) url[i] = this[i];
-  } else {
-    url = this.apply(null, arguments) + ext;
-  }
-  return url;
-};
-API.urlvers.oburl = function() {
-  var url = this[0], args = this.slice(1);
-  [].forEach.call(arguments, function(arg, i) { args[i] = arg; });
-  switch (typeof url) {
-  case "string": return API.urlvers.txurl.apply(url, args);
-  case "function": return API.urlvers.fnurl.apply(url, args);
-  }
 };
 // default API version
 API.V = 1.1;
@@ -1714,8 +1694,6 @@ V.init.CSS = '\
     border-style: solid;\
     word-wrap: break-word;\
   }\
-  #status_section {\
-  }\
   #status_profile {\
     box-sizing: border-box;\
     max-width: 500px;\
@@ -1770,10 +1748,6 @@ V.init.CSS = '\
     border: none;\
     border-top: 1px solid silver;\
   }\
-  #timeline {\
-  }\
-  #users {\
-  }\
   #cursor {\
     display: table;\
     width: 100%;\
@@ -1782,16 +1756,8 @@ V.init.CSS = '\
     display: table-cell;\
     text-align: center;\
   }\
-  .cursor_next {\
-  }\
-  .cursor_prev {\
-  }\
   .user-style-bar {\
     border-color: transparent;\
-  }\
-  a.maybe_shorten_url {\
-  }\
-  a.expanded_tco_url {\
   }\
   a.expanded_url {\
     text-decoration: underline;\
