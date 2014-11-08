@@ -2401,7 +2401,8 @@ V.main.showLoginUI = function(qs) {
     LS.save("request_token_secret", tokens["oauth_token_secret"]);
     var url = API.urls.oauth.authorize()();
     var request_token = tokens["oauth_token"];
-    location.href = url + "?oauth_token=" + request_token;
+    location.href = "https://api.twitter.com" +
+      url + "?oauth_token=" + request_token;
   };
   var getAcsToken = function() {
     var tokens = T.parseQuery(qs);

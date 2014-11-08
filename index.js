@@ -65,13 +65,6 @@ var srvres = {
     res.write("file " + req.url + " is not exist");
     res.end();
   },
-  goAuthorize: function(req, res) {
-    var header = new Header(".txt");
-    header["location"] = L.TW_API_URL + req.url;
-    res.writeHead(302, header);
-    res.write(header["location"]);
-    res.end();
-  },
   forceHTTPS: function(req, res, err) {
     var header = new Header(".txt");
     header["location"] = L.TW_MINUS_URL + req.url;
@@ -195,10 +188,6 @@ server.on("request", function(req, res) {
     // XHR request
     req.on("data", function(d) { data = Buffer.concat([data, d]); });
     req.on("end", function() { srvres.xhr(req, res, data); });
-    return;
-  } else if (/^\/oauth\/authorize($|\?)/.test(req.url)) {
-    // Access to Special URL
-    srvres.goAuthorize(req, res);
     return;
   } else {
     // 404 Not Found
