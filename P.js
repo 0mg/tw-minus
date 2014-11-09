@@ -85,7 +85,7 @@ P.getOAuthHeader = function(method, url, q, oauthPhase, token, token_secret) {
   switch (oauthPhase) {
   case "get_request_token":
     oauth_token_secret = "";
-    oadata["oauth_callback"] = L.TW_MINUS_URL + "/login";
+    oadata["oauth_callback"] = L.THIS_APP_URL + "/login";
     break;
   case "get_access_token":
     oauth_token_secret = token_secret;
