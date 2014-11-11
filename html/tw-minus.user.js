@@ -1057,7 +1057,7 @@ API.urls = new function() {
       },
       destroy: {
         1.1: "/1.1/saved_searches/destroy/#"
-      },
+      }
     }
   };
   urls.lists = {
@@ -2982,7 +2982,7 @@ V.main.newUser = function(user) {
     created_at: D.ce("a").sa("class", "created_at").
       add(D.ct(T.gapTime(new Date(user.created_at))))
   };
-  if (user.protected) lu.root.classList.add("protected");
+  if (user["protected"]) lu.root.classList.add("protected");
   if (user.verified) lu.root.classList.add("verified");
   if (user.url) {
     lu.created_at.href = user.entities ?
@@ -3278,7 +3278,7 @@ V.main.newTweet = function(tweet_org, my) {
   // entry
   nd.root.classList.add("screen_name-" + tweet.user.screen_name);
   nd.root.classList.add("id-" + tweet.id_str);
-  if (tweet.user.protected) nd.root.classList.add("protected");
+  if (tweet.user["protected"]) nd.root.classList.add("protected");
   if (tweet.user.verified) nd.root.classList.add("verified");
   if (isRT) nd.root.classList.add("retweet");
   if (/[RQ]T:?\s*@\w+/.test(tweet.text)) nd.root.classList.add("quote");
@@ -3619,10 +3619,10 @@ V.panel.showFollowPanel = function(user) {
     ab.want_rt.turn(ship.want_retweets);
     ab.mute.turn(ship.muting);
     // visibility
-    if ((!user.protected || user.following) && !ship.blocking) {
+    if ((!user["protected"] || user.following) && !ship.blocking) {
       ab.follow.show().enable();
     } else ab.follow.hide().disable();
-    if (user.protected && !user.following && !ship.blocking) {
+    if (user["protected"] && !user.following && !ship.blocking) {
       ab.req_follow.show().enable();
     } else ab.req_follow.hide().disable();
     if (true) ab.block.show().enable();
@@ -4463,7 +4463,7 @@ V.outline.rendProfileOutline = function(user) {
     listed: D.ce("a").add(D.ct("Listed")).
       sa("href", baseurl + "/lists/memberships")
   };
-  if (user.protected) p.box.classList.add("protected");
+  if (user["protected"]) p.box.classList.add("protected");
   if (user.verified) p.box.classList.add("verified");
   D.q("#side").add(p.box.add(
     D.ce("dt").add(D.ct("Screen Name")),
@@ -4496,7 +4496,7 @@ V.outline.rendProfileOutline = function(user) {
     D.ce("dt").add(D.ct("ID")),
     D.ce("dd").add(D.ct(user.id_str)),
     D.ce("dt").add(D.ct("Protected")),
-    D.ce("dd").add(D.ct(user.protected)),
+    D.ce("dd").add(D.ct(user["protected"])),
     D.ce("dt").add(D.ct("Time Zone")),
     D.ce("dd").add(D.ct(user.time_zone)),
     D.ce("dt").add(D.ct("Language")),
