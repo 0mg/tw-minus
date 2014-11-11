@@ -1853,11 +1853,6 @@ V.init.CSS = '\
   }'
   + // UserStream
   '\
-  hr {\
-    margin: 0;\
-    border: 0 solid silver;\
-    border-width: 1px 0 0;\
-  }\
   #timeline > li, .stream-event-target > li {\
     list-style: none;\
   }\
@@ -1883,7 +1878,7 @@ V.init.CSS = '\
     color: silver;\
   }\
   .stream-fragment:empty {\
-    display: none;\
+    padding: 0;\
   }\
   .stream-event-source {\
     position: absolute;\
@@ -2193,7 +2188,7 @@ V.main.showStream.open = function(url, my) {
   };
   var onMsg = function(ev) {
     if (ev.data instanceof Blob) {
-      insw(msgbuf); msgbuf = "";
+      if (msgbuf) { insw(msgbuf); msgbuf = ""; }
       if (ev.data.size) insw("request error", 1);
       else insw("finished", 1);
       return ev.target.close();
@@ -2211,19 +2206,18 @@ V.main.showStream.open = function(url, my) {
       }
       msgbuf = "";
     } else if (msg === "" && msgbuf || msgbuf.length > 1e5) {
-      insw(msgbuf);
+      if (msgbuf) { insw(msgbuf); msgbuf = ""; }
       insw("buffer error", 1);
-      msgbuf = "";
     } else {
-      insw(D.ce("hr"));
+      insw("");
     }
   };
   var onErr = function() {
-    insw(msgbuf); msgbuf = "";
+    if (msgbuf) { insw(msgbuf); msgbuf = ""; }
     insw("socket error", 1);
   };
   var onEnd = function() {
-    insw(msgbuf); msgbuf = "";
+    if (msgbuf) { insw(msgbuf); msgbuf = ""; }
     insw("stopped", 1);
   };
   var ws = WS.open(onOpen, onEnd, onMsg, onErr);
