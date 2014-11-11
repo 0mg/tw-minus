@@ -72,9 +72,9 @@ endlocal
 
 * index.js *--Web server*
 
-Other files are be loaded from index.js.
+Other files are be loaded via index.js.
 
-ex: index.js responses below to Web browsers.
+ex: index.js responds below to Web browsers.
 
 * html/
     * index.html
