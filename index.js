@@ -95,7 +95,7 @@ srvres.websocket = function(req, browser, rcvdata) {
     });
   };
   var params = rcvdata;
-  if (toString.call(params) !== "[object Object]") return;
+  if (Object.prototype.toString.call(params) !== "[object Object]") return;
   params.url = String(params.url);
   params.data = String(params.data);
   params.headers = Object(params.headers);
