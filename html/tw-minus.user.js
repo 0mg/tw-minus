@@ -1166,7 +1166,7 @@ API.urls = new function() {
   };
   (function fn(o) {
     for (var i in o) {
-      if (toString.call(o[i]) === "[object Object]") {
+      if (Object.prototype.toString.call(o[i]) === "[object Object]") {
         if (fn(o[i])) o[i] = API.genURLfn(o[i]);
       } else return true;
     }
