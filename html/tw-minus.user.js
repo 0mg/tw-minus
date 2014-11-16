@@ -3270,8 +3270,9 @@ V.main.newTweet = function(tweet_org, my) {
   };
 
   // entry
-  nd.root.classList.add("screen_name-" + tweet.user.screen_name);
-  nd.root.classList.add("id-" + tweet.id_str);
+  nd.root.dataset.screen_name = tweet.user.screen_name;
+  nd.root.dataset.user_id = tweet.user.id_str;
+  nd.root.dataset.id = tweet.id_str;
   if (tweet.user["protected"]) nd.root.classList.add("protected");
   if (tweet.user.verified) nd.root.classList.add("verified");
   if (isRT) nd.root.classList.add("retweet");
