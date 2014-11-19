@@ -393,11 +393,11 @@ D.tweetize.TWRE = {
   httpurl: /^https?:\/\/\S+/,
   url: /^(?:javascript|data|about|opera):\S+/,
   mention: /^@\w+(?:\/[a-zA-Z](?:-?[a-zA-Z0-9])*)?/,
-  hashTag: /^#\w*[a-zA-Z_]\w*/,
+  hashTag: /^[#＃]\w*[a-zA-Z_]\w*/,
   crlf: /^(?:\r\n|\r|\n)/,
   entity: /^&(?:[a-zA-Z]+|#\d+|#x[\da-fA-F]+);/,
   supchar: /^(?:[\ud800-\udbff][\udc00-\udfff])+/,
-  text: /^[^hjdao@#\r\n&\ud800-\udfff]+/
+  text: /^[^hjdao@#＃\r\n&\ud800-\udfff]+/
 };
 D.tweetize.all = function callee(ctx, entities, fragment, i) {
   if (!ctx) return fragment;
