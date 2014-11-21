@@ -178,16 +178,15 @@ server.on("request", function(req, res) {
     return;
   }
   var data = new Buffer("");
-  if (req.method !== "GET" ||
+  var filename = F.fixURLtoFileName(req.url);
+  if (F.realfilenames.indexOf(filename) >= 0) {
+    // File request
+  } else if (req.method !== "GET" ||
     req.headers["x-requested-with"] === "XMLHttpRequest") {
     // XHR request
     req.on("data", function(d) { data = Buffer.concat([data, d]); });
     req.on("end", function() { srvres.xhr(req, res, data); });
     return;
-  }
-  var filename = F.fixURLtoFileName(req.url);
-  if (F.realfilenames.indexOf(filename) >= 0) {
-    // File request
   } else {
     // 404 Not Found
     filename = F.index_html_path;

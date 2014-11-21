@@ -12,6 +12,7 @@ F.realfilenames = [
   F.index_html_path,
   "./html/tw-minus.user.js",
   "./html/tw-minus-patch.js",
+  "./html/tw-minus-heroku.js",
   "./html/favicon.ico"
 ];
 
