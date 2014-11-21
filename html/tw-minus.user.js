@@ -1019,6 +1019,9 @@ API.urls = new function() {
     },
     show: {
       1.1: "/1.1/users/show"
+    },
+    no_retweets_ids: {
+      1.1: "/1.1/friendships/no_retweets/ids"
     }
   };
   urls.d = {
@@ -2066,6 +2069,9 @@ V.main.showPage.on2 = function(hash, q, my) {
   case "blocking":
     it.showUsersByIds(API.urls.blocking.ids()() + "?" + q, my);
     break;
+  case "no_retweets":
+    it.showUsersByIds(API.urls.users.no_retweets_ids()() + "?" + q, my);
+    break;
 
   } else switch (hash[1]) {
   case "status": case "statuses":
@@ -2857,6 +2863,9 @@ V.main.settingFollow = function(my) {
 V.main.showUsersByIds = function(url, my, mode) {
   var onScs = function(xhr) {
     var data = T.jsonNumstr(xhr.responseText);
+    if (Array.isArray(data)) {
+      data = { ids: data };
+    }
     V.main.showUsersByLookup(data, url, my, mode);
   };
   // set ?count=<max>
