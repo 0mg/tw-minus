@@ -425,7 +425,8 @@ D.tweetize.all = function callee(ctx, entities, fragment, i) {
     do {
       url = eMed.media_url_https + ":large";
       list.add(D.ce("li").add(D.ce("a").sa("href", url).
-        add(D.ct(url.match(/[^/]+$/)))));
+        add(D.ce("img").sa("alt", url.match(/[^/]+$/)).
+          sa("src", eMed.media_url_https + ":thumb"))));
       entities.media.shift();
     } while (eMed = entities.media[0]);
     fragment.add(list);
@@ -1842,7 +1843,8 @@ V.init.CSS = '\
     height: 73px;\
   }\
   .twimgs li {\
-    list-style: inside;\
+    display: inline-block;\
+    list-style: none;\
   }\
   [role=button][aria-pressed=mixed]::before {\
     content: "\\ff1f";\
