@@ -1836,7 +1836,7 @@ V.init.CSS = '\
     height: 48px;\
   }\
   .meta .source:not(:empty)::before { content: " via "; }\
-  .meta .geo:not(:empty)::before { content: " from "; }\
+  .meta .geo:not(:empty)::before { content: " at "; }\
   .meta .retweeter:not(:empty)::before { content: " by "; }\
   .user-profile .user-icon {\
     width: 73px;\
