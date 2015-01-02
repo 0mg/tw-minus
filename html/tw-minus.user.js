@@ -423,7 +423,7 @@ D.tweetize.all = function callee(ctx, entities, fragment, i) {
     str = ctx.substring(0, eMed.indices[1] - i);
     var list = D.ce("ul").sa("class", "twimgs");
     do {
-      url = eMed.media_url_https + ":large";
+      url = eMed.media_url_https + ":orig";
       list.add(D.ce("li").add(D.ce("a").sa("href", url).
         add(D.ce("img").sa("alt", url.match(/[^/]+$/)).
           sa("src", eMed.media_url_https + ":thumb"))));
