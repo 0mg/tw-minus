@@ -428,7 +428,8 @@ D.tweetize.all = function callee(ctx, entities, fragment, i) {
         add(D.ce("img").sa("alt", url.match(/[^/]+$/)).
           sa("src", eMed.media_url_https + ":thumb"))));
       entities.media.shift();
-    } while (eMed = entities.media[0]);
+      eMed = entities.media[0];
+    } while (eMed && eMed.indices[0] === i);
     fragment.add(list);
 
   } else str = D.tweetize.one(ctx, fragment);
