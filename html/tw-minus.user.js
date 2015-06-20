@@ -1687,6 +1687,11 @@ V.init.CSS = '\
     width: 48px;\
     height: 48px;\
   }\
+  #status_media_preview li .media_image[data-larged=true] {\
+    display: block;\
+    width: auto;\
+    height: auto;\
+  }\
   #status_media {\
     max-width: 50%;\
   }\
@@ -4117,12 +4122,12 @@ V.panel.newTweetBox = function(my) {
       var fr = new FileReader;
       fr.addEventListener("load", function() {
         var url = "data:" + file.type + ";base64," + btoa(fr.result);
-        nd.imgvw.add(D.ce("li").add(
-          D.ce("a").sa("href", url).add(
-            D.ce("img").sa("class", "media_image").
-              sa("alt", file.name).sa("src", url)
-          )
-        ));
+        var upimg = D.ce("img");
+        upimg.sa("class", "media_image").sa("alt", file.name).sa("src", url);
+        upimg.addEventListener("click", function() {
+          upimg.dataset.larged = upimg.dataset.larged !== "true";
+        });
+        nd.imgvw.add(D.ce("li").add(upimg));
       });
       fr.readAsBinaryString(file);
     });
