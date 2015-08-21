@@ -334,7 +334,14 @@ U.getURL = function() {
 
 // DOM Functions
 D = function D(e) {
-  if (e) e.add = D.add, e.ins = D.ins, e.sa = D.sa, e.q = D.q, e.qs = D.qs;
+  if (e) {
+    e.add = D.add, e.ins = D.ins, e.sa = D.sa;
+    e.q = D.q, e.qs = D.qs, e.qr = D.qr;
+    e.on = function() {
+      addEventListener.apply(this, arguments);
+      return this;
+    };
+  }
   return e;
 };
 D.add = function add() {
