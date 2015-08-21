@@ -430,10 +430,21 @@ D.tweetize.all = function callee(ctx, entities, fragment, i) {
     str = ctx.substring(0, eMed.indices[1] - i);
     var list = D.ce("ul").sa("class", "twimgs");
     do {
-      url = eMed.media_url_https + ":orig";
-      list.add(D.ce("li").add(D.ce("a").sa("href", url).
-        add(D.ce("img").sa("alt", url.match(/[^/]+$/)).
-          sa("src", eMed.media_url_https + ":thumb"))));
+      if (eMed.video_info) {
+        url = "";
+        if (!eMed.video_info.variants.some(function(obj) {
+          if (/.+\.webm$/.test(obj.url)) return url = obj.url;
+        })) url = eMed.video_info.variants[0].url;
+        list.add(D.ce("li").add(
+          D.ce("video").sa("src", url).sa("controls", "").
+            sa("poster", eMed.media_url_https)
+        ));
+      } else {
+        url = eMed.media_url_https + ":orig";
+        list.add(D.ce("li").add(D.ce("a").sa("href", url).
+          add(D.ce("img").sa("alt", url.match(/[^/]+$/)).
+            sa("src", eMed.media_url_https + ":thumb"))));
+      }
       entities.media.shift();
       eMed = entities.media[0];
     } while (eMed && eMed.indices[0] === i);
@@ -1858,6 +1869,11 @@ V.init.CSS = '\
   .twimgs li {\
     display: inline-block;\
     list-style: none;\
+  }\
+  .twimgs video {\
+    width: 320px;\
+    height: 240px;\
+    background: #000;\
   }\
   [role=button][aria-pressed=mixed]::before {\
     content: "\\ff1f";\
