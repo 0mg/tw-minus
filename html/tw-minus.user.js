@@ -352,6 +352,13 @@ D.q = function(s) { return D((this === D ? document: this).querySelector(s)); };
 D.qs = function(s) {
   return (this === D ? document: this).querySelectorAll(s);
 };
+D.qr = function(s) {
+  var all = [].slice.call(D.qs(s)), idx, e = this;
+  while (e = e.parentNode) {
+    idx = all.indexOf(e);
+    if (idx >= 0) return all[idx];
+  }
+};
 D.ce = function(s) {
   return D(document.createElementNS("http://www.w3.org/1999/xhtml", s));
 };
@@ -3276,6 +3283,7 @@ V.main.newTweet = function(tweet_org, my) {
     text: D.ce("p").
       sa("class", "text").
       add(D.tweetize(tweet.text, tweet.entities, tweet.extended_entities)),
+    quotes: D.ce("ul").sa("class", "quoted_tweets"),
     meta: D.ce("div").
       sa("class", "meta"),
     date: D.ce("a").
@@ -3299,6 +3307,7 @@ V.main.newTweet = function(tweet_org, my) {
     nd.nick,
     nd.reid,
     nd.text,
+    nd.quotes,
     nd.meta.add(nd.date, nd.src, nd.geo, nd.rter),
     V.panel.makeTwAct(tweet_org, my)
   );
@@ -4596,6 +4605,34 @@ V.outline.showSearchPanel = function(query) {
   );
 };
 
+// set window's event listeners
+V.main.setEvents = function(my) {
+  addEventListener("click", function(e) {
+    var tgt = e.target;
+    var ma = String(tgt.href).
+      match(/^https?:\/\/twitter.com\/\w+\/status\/(\d+)/);
+    var ma2 = tgt.classList && tgt.classList.contains("in_reply_to") &&
+      String(tgt.href).match(/\d+$/);
+    if (ma && [].slice.call(D.qs(".tweet>.text>a")).indexOf(tgt) >= 0) {
+      var id = ma[1];
+      X.get(API.urls.tweet.get()() + "?id=" + id, function(xhr) {
+        var tweet = T.jsonParse(xhr.responseText);
+        var card = V.main.newTweet(tweet, my);
+        tgt.qr(".tweet").q(".quoted_tweets").add(card);
+      });
+      e.preventDefault();
+    } else if (ma2 && tgt.classList.contains("in_reply_to")) {
+      var id = ma2[0];
+      X.get(API.urls.tweet.get()() + "?id=" + id, function(xhr) {
+        var tweet = T.jsonParse(xhr.responseText);
+        var card = V.main.newTweet(tweet, my);
+        tgt.qr(".tweet").q(".quoted_tweets").add(card);
+      });
+      e.preventDefault();
+    }
+  });
+};
+
 // main
 (function() {
   var ls = LS.load();
@@ -4603,6 +4640,7 @@ V.outline.showSearchPanel = function(query) {
   var editDOM = function() {
     V.init.initNode(my);
     V.main.showPage(my);
+    V.main.setEvents(my);
   };
   if (document.readyState === "complete") editDOM();
   else addEventListener("DOMContentLoaded", function() { editDOM(); });
