@@ -2249,7 +2249,7 @@ V.main.showStream.open = function(url, my) {
         insw(V.main.newStreamEntry(json, my) || O.htmlify(json));
       }
       msgbuf = "";
-    } else if (msg === "" && msgbuf || msgbuf.length > 1e9) {
+    } else if (msg === "" && msgbuf || msgbuf.length > 1e5) {
       if (msgbuf) { insw(msgbuf); msgbuf = ""; }
       insw("buffer error", 1);
     } else {
