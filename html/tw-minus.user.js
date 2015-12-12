@@ -483,7 +483,7 @@ D.tweetize.one = function(ctx, fragment) {
     str = str[0]; fragment.add(D.tweetize.mention(str));
 
   } else if (str = TWRE.supchar.exec(ctx)) {
-    //str = str[0]; fragment.add(D.tweetize.emoji(str)); return str;
+    str = str[0]; fragment.add(D.tweetize.emoji(str)); return str;
     str = str[0]; fragment.add(
       D.ce("span").sa("class", "supchar").add(D.ct(str))
     );
