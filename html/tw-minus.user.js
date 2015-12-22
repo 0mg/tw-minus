@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name tw-minus
 // @include https://api.twitter.com/robots.txt?-=/*
+// @include https://upload.twitter.com/robots.txt?-=/*
 // ==/UserScript==
 "use strict";
 
-var U, C, D, O, T, P, X, V, API, LS, WS;
+var U, C, D, O, T, P, X, V, API, LS, WS, XDOMAIN;
 
 // CONST VALUE
 C = {};
@@ -1172,7 +1173,7 @@ API.urls = new function() {
       1.1: "/1.1/statuses/retweet/#"
     },
     upload: {
-      1.1: "/1.1/statuses/update_with_media"
+      1.1: "/1.1/media/upload"
     },
     destroy: {
       1.1: "/1.1/statuses/destroy/#"
@@ -1412,18 +1413,61 @@ API.resolveURL = function(links, onScs, onErr) {
         })).join("&urls[]=").substring(1), onScs, onErr);
 };
 
-API.tweet = function(status, id, onScs, onErr) {
+API.tweet = function(status, id, media_ids, onScs, onErr) {
   var q = { status: status };
   if (id !== undefined) q.in_reply_to_status_id = id;
+  if (media_ids !== undefined) q.media_ids = media_ids;
   X.post(API.urls.tweet.post()(), q, onScs, onErr);
 };
 
 API.tweetMedia = function(media, status, id, onScs, onErr) {
-  var url = API.urls.tweet.upload()();
-  var q = { "media[]": media };
-  if (status !== undefined) q.status = status;
-  if (id !== undefined) q.in_reply_to_status_id = id;
-  X.post(url, X.formData(q), onScs, onErr);
+  if (true) {
+    addEventListener("message", function fn(event) {
+      removeEventListener(event.type, fn);
+      var json = T.jsonParse(event.data);
+      API.tweet(status, id, json.media_id_string, onScs, onErr);
+    });
+    var fr = new FileReader;
+    fr.addEventListener("load", function() {
+      var ls = LS.load();
+      var postToFrame = function() {
+        D.q("#upload-twitter-com").contentWindow.postMessage(JSON.stringify({
+          "file": {
+            "size": media[0].size,
+            "type": media[0].type
+          },
+          "meta": {
+            "consumer_key": ls.consumer_key,
+            "consumer_secret": ls.consumer_secret,
+            "access_token": ls.access_token,
+            "access_token_secret": ls.access_token_secret
+          },
+          "query": {
+            "media_data": btoa(fr.result)
+          }
+        }), "https://upload.twitter.com");
+      };
+      if (D.q("#upload-twitter-com")) {
+        postToFrame();
+      } else {
+        D.q("body").add(
+          D.ce("iframe").
+            sa("src", "https://upload.twitter.com/robots.txt?-=/").
+            sa("id", "upload-twitter-com")
+        );
+        D.q("#upload-twitter-com").addEventListener("load", postToFrame);
+      }
+    });
+    fr.readAsBinaryString(media[0]);
+    return;
+  }
+  var url = "https://upload.twitter.com" + API.urls.tweet.upload()();
+  var q = { "media_data": btoa(media) };
+  var onUpload = function(xhr) {
+    var json = T.jsonParse(xhr.responseText);
+    API.tweet(status, id, json.media_id_string, onScs, onErr);
+  };
+  X.post(url, X.formData(q), onUpload, onErr);
 };
 
 API.untweet = function(id, onScs, onErr) {
@@ -1882,6 +1926,9 @@ V.init.CSS = '\
     height: 240px;\
     background: #000;\
   }\
+  .quoted_tweets .quoted_tweets {\
+    margin-left: -60px;\
+  }\
   [role=button][aria-pressed=mixed]::before {\
     content: "\\ff1f";\
     font-weight: bold;\
@@ -1938,7 +1985,11 @@ V.init.CSS = '\
   .stream-event-content {\
     padding: 1ex;\
     color: gray;\
-  }'.replace(/\s+/g, " ");
+  }\
+  #upload-twitter-com {\
+    display: none;\
+  }\
+  '.replace(/\s+/g, " ");
 
 // Clear all node and set new one
 V.init.initNode = function(my) {
@@ -3330,9 +3381,9 @@ V.main.newTweet = function(tweet_org, my) {
     nd.nick,
     nd.reid,
     nd.text,
-    nd.quotes,
     nd.meta.add(nd.date, nd.src, nd.geo, nd.rter),
-    V.panel.makeTwAct(tweet_org, my)
+    V.panel.makeTwAct(tweet_org, my),
+    nd.quotes
   );
 
   // in reply to *
@@ -4135,7 +4186,7 @@ V.panel.newTweetBox = function(my) {
     } else if (d_ma) {
       API.d(d_ma[2], d_ma[1], onTweet);
     } else {
-      API.tweet(nd.status.value, nd.id.value, onTweet);
+      API.tweet(nd.status.value, nd.id.value, undefined, onTweet);
     }
   });
   nd.usemedia.addEventListener("change", function() {
@@ -4656,8 +4707,61 @@ V.main.setEvents = function(my) {
   });
 };
 
+// upload.twitter.com
+XDOMAIN = {};
+XDOMAIN.main = function() {
+  addEventListener("message", function(event) {
+    var url = "https://upload.twitter.com/1.1/media/upload.json";
+    var json = T.jsonParse(event.data);
+    var meta = json.meta;
+    var media_id = undefined;
+    LS.save("consumer_key", meta.consumer_key);
+    LS.save("consumer_secret", meta.consumer_secret);
+    LS.save("access_token", meta.access_token);
+    LS.save("access_token_secret", meta.access_token_secret);
+    var q1 = {
+      command: "INIT",
+      media_type: json.file.type,
+      total_bytes: json.file.size
+    };
+    var q2 = {
+      command: "APPEND",
+      media_id: undefined,
+      segment_index: 0,
+      media_data: json.query.media_data
+    };
+    var q3 = {
+      command: "FINALIZE",
+      media_id: undefined
+    };
+    var onStep1 = function(xhr) {
+      if ((xhr.status / 100 | 0) === 2) {
+        var json1 = T.jsonParse(xhr.responseText);
+        q2.media_id = media_id = json1.media_id_string;
+        X.post(url, q2, onStep2, onStep2);
+      } else alert([xhr.status, xhr.responseText].join("\n"));
+    };
+    var onStep2 = function(xhr) {
+      if ((xhr.status / 100 | 0) === 2) {
+        q3.media_id = media_id;
+        X.post(url, q3, onStep3, onStep3);
+      } else alert([xhr.status, xhr.responseText].join("\n"));
+    };
+    var onStep3 = function(xhr) {
+      if ((xhr.status / 100 | 0) === 2) {
+        event.source.postMessage(xhr.responseText, "https://api.twitter.com");
+      } else alert([xhr.status, xhr.responseText].join("\n"));
+    };
+    X.post(url, q1, onStep1, onStep1);
+  });
+};
+
 // main
 (function() {
+  if (location.host === "upload.twitter.com") {
+    XDOMAIN.main();
+    return;
+  }
   var ls = LS.load();
   var my = ls["credentials"];
   var editDOM = function() {
