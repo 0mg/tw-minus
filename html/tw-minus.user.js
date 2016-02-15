@@ -1882,6 +1882,9 @@ V.init.CSS = '\
     height: 240px;\
     background: #000;\
   }\
+  .quoted_tweets .quoted_tweets {\
+    margin-left: -60px;\
+  }\
   [role=button][aria-pressed=mixed]::before {\
     content: "\\ff1f";\
     font-weight: bold;\
@@ -3330,9 +3333,9 @@ V.main.newTweet = function(tweet_org, my) {
     nd.nick,
     nd.reid,
     nd.text,
-    nd.quotes,
     nd.meta.add(nd.date, nd.src, nd.geo, nd.rter),
-    V.panel.makeTwAct(tweet_org, my)
+    V.panel.makeTwAct(tweet_org, my),
+    nd.quotes
   );
 
   // in reply to *
