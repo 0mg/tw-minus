@@ -23,3 +23,4 @@ L.PORT = L.thisAppIsOnWeb ? process.env.PORT | 0 : 3000;
 L.THIS_APP_URL = process.env.URL || "http://localhost:" + L.PORT;
 L.TW_API_URL = "https://api.twitter.com";
 L.TW_STREAM_URL = "https://userstream.twitter.com";
+L.TW_UPLOAD_URL = "https://upload.twitter.com";

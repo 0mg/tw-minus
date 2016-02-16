@@ -125,6 +125,8 @@ var sendTwitter = function(params, browser, callback) {
   var url;
   if (params.url.indexOf(L.TW_STREAM_URL + "/") === 0) {
     url = params.url;
+  } else if (params.url.indexOf("/1.1/media/upload.json") === 0 ) {
+    url = L.TW_UPLOAD_URL + params.url;
   } else {
     url = L.TW_API_URL + params.url;
   }

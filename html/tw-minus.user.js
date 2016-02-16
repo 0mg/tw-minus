@@ -1421,7 +1421,24 @@ API.tweet = function(status, id, media_ids, onScs, onErr) {
 };
 
 API.tweetMedia = function(media, status, id, onScs, onErr) {
-  if (true) {
+  // 1. create JSON
+  var params = {
+    "file": {
+      "size": media[0].size,
+      "type": media[0].type,
+      "base64": undefined
+    }
+  };
+  // 2. create event handler
+  var onReadFile = function() {
+    params.file.base64 = btoa(fr.result);
+    API.uploadMedia(params, function(xhr) {
+      var json = T.jsonParse(xhr.responseText);
+      API.tweet(status, id, json.media_id_string, onScs, onErr);
+    });
+  };
+  // 2. create event handler (for cross domain)
+  if (location.host === "api.twitter.com") {
     addEventListener("message", function fn(event) {
       removeEventListener(event.type, fn);
       if (event.origin !== "https://upload.twitter.com") return;
@@ -1430,22 +1447,17 @@ API.tweetMedia = function(media, status, id, onScs, onErr) {
         API.tweet(status, id, json.media_id_string, onScs, onErr);
       }
     });
-    var fr = new FileReader;
-    fr.addEventListener("load", function() {
+    onReadFile = function() {
+      params.file.base64 = btoa(fr.result);
       var ls = LS.load();
+      params.meta = {
+        "access_token": ls.access_token,
+        "access_token_secret": ls.access_token_secret
+      };
+      params.command = "mediaupload";
       var postToFrame = function() {
-        D.q("#upload-twitter-com").contentWindow.postMessage(JSON.stringify({
-          "command": "mediaupload",
-          "file": {
-            "size": media[0].size,
-            "type": media[0].type,
-            "base64": btoa(fr.result)
-          },
-          "meta": {
-            "access_token": ls.access_token,
-            "access_token_secret": ls.access_token_secret
-          }
-        }), "https://upload.twitter.com");
+        D.q("#upload-twitter-com").contentWindow.
+          postMessage(JSON.stringify(params), "https://upload.twitter.com");
       };
       if (D.q("#upload-twitter-com")) {
         postToFrame();
@@ -1457,17 +1469,45 @@ API.tweetMedia = function(media, status, id, onScs, onErr) {
         );
         D.q("#upload-twitter-com").addEventListener("load", postToFrame);
       }
-    });
-    fr.readAsBinaryString(media[0]);
-    return;
+    };
   }
-  var url = "https://upload.twitter.com" + API.urls.tweet.upload()();
-  var q = { "media_data": btoa(media) };
-  var onUpload = function(xhr) {
-    var json = T.jsonParse(xhr.responseText);
-    API.tweet(status, id, json.media_id_string, onScs, onErr);
+  // 3. read file
+  var fr = new FileReader;
+  fr.addEventListener("load", onReadFile);
+  fr.readAsBinaryString(media[0]);
+};
+
+API.uploadMedia = function(json, onScs, onErr) {
+  var url = API.urls.tweet.upload()();
+  var media_id;
+  var q1 = {
+    command: "INIT",
+    media_type: json.file.type,
+    total_bytes: json.file.size
   };
-  X.post(url, X.formData(q), onUpload, onErr);
+  var q2 = {
+    command: "APPEND",
+    media_id: undefined,
+    segment_index: 0,
+    media_data: json.file.base64
+  };
+  var q3 = {
+    command: "FINALIZE",
+    media_id: undefined
+  };
+  var onStep1 = function(xhr) {
+    var json1 = T.jsonParse(xhr.responseText);
+    q2.media_id = media_id = json1.media_id_string;
+    X.post(url, q2, onStep2);
+  };
+  var onStep2 = function(xhr) {
+    q3.media_id = media_id;
+    X.post(url, q3, onStep3);
+  };
+  var onStep3 = function(xhr) {
+    onScs(xhr);
+  };
+  X.post(url, q1, onStep1);
 };
 
 API.untweet = function(id, onScs, onErr) {
@@ -4709,58 +4749,28 @@ V.main.setEvents = function(my) {
 
 // upload.twitter.com
 XDOMAIN = {};
-XDOMAIN.uploadMedia = function(event) {
-  var json = T.jsonParse(event.data);
-  var url = API.urls.tweet.upload()();
-  var meta = json.meta;
-  var media_id = undefined;
-  LS.save("access_token", meta.access_token);
-  LS.save("access_token_secret", meta.access_token_secret);
-  var q1 = {
-    command: "INIT",
-    media_type: json.file.type,
-    total_bytes: json.file.size
-  };
-  var q2 = {
-    command: "APPEND",
-    media_id: undefined,
-    segment_index: 0,
-    media_data: json.file.base64
-  };
-  var q3 = {
-    command: "FINALIZE",
-    media_id: undefined
-  };
-  var onStep1 = function(xhr) {
-    var json1 = T.jsonParse(xhr.responseText);
-    q2.media_id = media_id = json1.media_id_string;
-    X.post(url, q2, onStep2);
-  };
-  var onStep2 = function(xhr) {
-    q3.media_id = media_id;
-    X.post(url, q3, onStep3);
-  };
-  var onStep3 = function(xhr) {
-    var json = T.jsonParse(xhr.responseText);
-    json.command = "tellMediaID";
-    event.source.postMessage(JSON.stringify(json), "https://api.twitter.com");
-  };
-  X.post(url, q1, onStep1);
-};
 XDOMAIN.main = function() {
   addEventListener("message", function(event) {
     if (event.origin !== "https://api.twitter.com") return;
     var json = T.jsonParse(event.data);
-    if (json.command === "mediaupload") XDOMAIN.uploadMedia(event);
+    if (json.command === "mediaupload") {
+      LS.save("access_token", json.meta.access_token);
+      LS.save("access_token_secret", json.meta.access_token_secret);
+      API.uploadMedia(json, function(xhr) {
+        var json = T.jsonParse(xhr.responseText);
+        json.command = "tellMediaID";
+        event.source.postMessage(JSON.stringify(json),
+          "https://api.twitter.com");
+      });
+    }
   });
 };
 
 // main
+if (location.host === "upload.twitter.com") {
+  XDOMAIN.main();
+} else
 (function() {
-  if (location.host === "upload.twitter.com") {
-    XDOMAIN.main();
-    return;
-  }
   var ls = LS.load();
   var my = ls["credentials"];
   var editDOM = function() {
