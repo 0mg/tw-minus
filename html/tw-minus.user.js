@@ -1882,7 +1882,7 @@ V.init.CSS = '\
   }\
   .user-profile.verified > dd:first-of-type::before,\
   .user.verified .name::before,\
-  .tweet.verified .name::before {\
+  .tweet.verified > .name::before {\
     content: "verified";\
     font-weight: normal;\
     vertical-align: middle;\
