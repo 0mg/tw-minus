@@ -781,7 +781,9 @@ X.formData = function(qrys) {
 X.onloadstart = function(method, url, q) {
   V.misc.onXHRStart(method, url, q);
 };
-X.onloadend = function(xhr, method, url, q) {};
+X.onloadend = function(method, url, q) {};
+X.onprogress = function(method, url, q, evt) {
+};
 
 X.onload = function(method, url, q, f, b) {
   if (!(this instanceof XMLHttpRequest)) throw method + ":not XHR obj";
@@ -837,6 +839,7 @@ X.get = function get(url, f, b) {
   xhr.addEventListener("error", X.onerror.bind(xhr, method, url, "", f, b));
   xhr.addEventListener("loadstart", X.onloadstart.bind(xhr, method, url, ""));
   xhr.addEventListener("loadend", X.onloadend.bind(xhr, method, url, ""));
+  xhr.addEventListener("progress", X.onprogress.bind(xhr, method, url, ""));
   xhr.send(null);
   return xhr;
 };
