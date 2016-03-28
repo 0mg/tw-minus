@@ -439,14 +439,23 @@ D.tweetize.all = function callee(ctx, entities, fragment, i) {
     var list = D.ce("ul").sa("class", "twimgs");
     do {
       if (eMed.video_info) {
-        url = "";
-        if (!eMed.video_info.variants.some(function(obj) {
-          if (/.+\.webm$/.test(obj.url)) return url = obj.url;
-        })) url = eMed.video_info.variants[0].url;
-        list.add(D.ce("li").add(
-          D.ce("video").sa("src", url).sa("controls", "").
-            sa("poster", eMed.media_url_https)
-        ));
+        var nd = O.sa(D.ce("video"), {
+          controls: true, poster: eMed.media_url_https
+        });
+        /*D.add.apply(nd, eMed.video_info.variants.map(function(obj) {
+          return O.sa(D.ce("source"), {
+            src: obj.url,
+            type: obj.content_type
+          });
+        }));*/
+        eMed.video_info.variants.some(function(obj) {
+          return /.+\.(webm|mp4)$/.test(nd.src = obj.url);
+        });
+        nd.on("error", function f(e) {
+          e.target.removeEventListener(e.type, f);
+          e.target.on("click", function(e) { open(e.target.src); });
+        });
+        list.add(D.ce("li").add(nd));
       } else {
         url = eMed.media_url_https + ":orig";
         list.add(D.ce("li").add(D.ce("a").sa("href", url).
