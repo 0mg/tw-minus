@@ -1980,6 +1980,7 @@ V.init.CSS = '\
   }\
   .quoted_tweets .quoted_tweets {\
     margin-left: -60px;\
+    margin-right: -1ex;\
   }\
   [role=button][aria-pressed=mixed]::before {\
     content: "\\ff1f";\
