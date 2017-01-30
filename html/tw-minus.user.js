@@ -3369,7 +3369,7 @@ V.main.rendTL = function rendTL(timeline, my) {
 
 // modify [url's state]
 V.main.onScroll = function() {
-  LS.state.save("scrollTop", D.q("body").scrollTop);
+  //LS.state.save("scrollTop", D.q("body").scrollTop);
 };
 
 // load [url's state]
