@@ -453,7 +453,7 @@ D.tweetize.all = function callee(ctx, entities, fragment, i) {
         });
         nd.on("error", function f(e) {
           e.target.removeEventListener(e.type, f);
-          e.target.on("click", function(e) { open(e.target.src); });
+          e.target.on("play", function(e) { location.assign(e.target.src); });
         });
         list.add(D.ce("li").add(nd));
       } else {
