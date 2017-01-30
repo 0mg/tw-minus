@@ -4737,7 +4737,7 @@ V.main.setEvents = function(my) {
   addEventListener("click", function(e) {
     var tgt = e.target;
     var ma = String(tgt.href).
-      match(/^https?:\/\/twitter.com\/\w+\/status\/(\d+)/);
+      match(/^https?:\/\/twitter.com\/\w+\/status(?:es)?\/(\d+)/);
     var ma2 = tgt.classList && tgt.classList.contains("in_reply_to") &&
       String(tgt.href).match(/\d+$/);
     if (ma && [].slice.call(D.qs(".tweet>.text>a")).indexOf(tgt) >= 0) {
