@@ -3645,8 +3645,8 @@ V.panel.makeTwAct = function(tweet_org, my) {
   ab.rep.node.sa("class", "reply");
   if (isTW || isRT) ab.node.add(ab.fav.node);
   ab.node.add(ab.rep.node);
+  if (isTW || isRT) ab.node.add(ab.rt.node);
   if (isDM || isMyTweet || isRTtoMe) ab.node.add(ab.del.node);
-  else ab.node.add(ab.rt.node);
 
   // init
   if (tweet.favorited) ab.fav.turn(true);
