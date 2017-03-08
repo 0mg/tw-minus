@@ -2154,10 +2154,10 @@ V.main.showPage.on1 = function(hash, q, my) {
     it.showTL(API.urls.timeline.mentions()() + "?" + q, my);
     break;
   case "":
-    it.showTL(API.urls.timeline.home()() + "?" + q, my);
+    it.showTL(API.urls.timeline.home()() + "?" + q + "&count=100", my);
     break;
   default:
-    it.showTL(API.urls.timeline.user()() + "?" + q +
+    it.showTL(API.urls.timeline.user()() + "?" + q + "&count=100" +
       "&" + T.userQryStr(hash[0]), my);
     V.outline.showProfileOutline(hash[0], my);
   }
@@ -2245,6 +2245,7 @@ V.main.showPage.on2 = function(hash, q, my) {
       it.showTL(API.urls.tweet.get()() + "?" + q + "&id=" + hash[1], my);
     } else {
       it.showTL(API.urls.lists.tweets()() + "?" + q +
+        "&count=100" +
         "&owner_screen_name=" + hash[0] +
         "&slug=" + hash[1] +
         "&include_rts=false", my);
