@@ -2215,6 +2215,12 @@ V.main.showPage.on2 = function(hash, q, my) {
     it.showUsersByIds(API.urls.users.no_retweets_ids()() + "?" + q, my);
     break;
 
+  } else if (hash[0] === "@") {
+    it.showFeedTL(hash[1].split(",").map(function(user) {
+      return API.urls.timeline.user()() + "?" + q + "&count=20" +
+        "&" + T.userQryStr(user);
+    }), my);
+
   } else switch (hash[1]) {
   case "status": case "statuses":
     it.showTL(API.urls.timeline.user()() + "?" + q +
@@ -3328,6 +3334,25 @@ V.main.showTL = function(url, my) {
   LS.state.save("timeline_url", url);
   LS.state.save("timeline_my", my);
   X.get(url, onScs, V.misc.showXHRError);
+};
+
+// timeline of comma separated usernames
+V.main.showFeedTL = function(urlarr, my) {
+  var rest = urlarr.length;
+  var mixedtl = [];
+  function onGot(xhr) {
+    var timeline = T.jsonParse(xhr.responseText) || [];
+    [].push.apply(mixedtl, timeline);
+    if (--rest <= 0) {
+      mixedtl.sort(function(p, q) {
+        return new Date(q.created_at) - new Date(p.created_at);
+      });
+      V.main.rendTL(mixedtl, my);
+    }
+  }
+  urlarr.forEach(function(url) {
+    X.get(url, onGot, onGot);
+  });
 };
 
 V.main.prendTL = function(timeline, my, expurls) {
