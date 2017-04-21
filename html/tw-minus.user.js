@@ -3668,6 +3668,7 @@ V.panel.makeTwAct = function(tweet_org, my) {
     del: new V.Button("Delete"),
     rt: new V.Button("RT", "UnRT")
   };
+  ab.node.classList.add("actions");
   ab.rep.node.sa("class", "reply");
   if (isTW || isRT) ab.node.add(ab.fav.node);
   ab.node.add(ab.rep.node);
