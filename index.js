@@ -179,15 +179,15 @@ server.on("request", function(req, res) {
     srvres.forceHTTPS(req, res, "");
     return;
   }
-  var data = new Buffer("");
+  var data = [];
   var filename = F.fixURLtoFileName(req.url);
   if (F.realfilenames.indexOf(filename) >= 0) {
     // File request
   } else if (req.method !== "GET" ||
     req.headers["x-requested-with"] === "XMLHttpRequest") {
     // XHR request
-    req.on("data", function(d) { data = Buffer.concat([data, d]); });
-    req.on("end", function() { srvres.xhr(req, res, data); });
+    req.on("data", function(d) { data.push(d); });
+    req.on("end", function() { srvres.xhr(req, res, Buffer.from(data)); });
     return;
   } else {
     // 404 Not Found
@@ -224,7 +224,7 @@ server.on("upgrade", function(req, skt, head) {
   skt.on("data", function(fm) {
     // Patch for Opera 12.17
     if (fm.length === 1) {
-      operafm = new Buffer(fm);
+      operafm = Buffer.from(fm);
       return;
     } else if (operafm.length) {
       fm = Buffer.concat([operafm, fm])

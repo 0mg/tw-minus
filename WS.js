@@ -20,17 +20,17 @@ WSF.framify = function(data, type) { // opts={type:"DATA_TYPES",data:"*"}
 };
 WSF.prototype.toFrame = function() {
   var opcode = [].indexOf.call(WSF.DATA_TYPES, this.type);
-  var rawdata = new Buffer(this.data);
+  var rawdata = Buffer.from(this.data);
   // [BYTE 1]
-  var b1 = new Buffer([1 << 7 | opcode]);
+  var b1 = Buffer.from([1 << 7 | opcode]);
   // [BYTE 2] [BYTE 3]
   var b2, b3;
   if (rawdata.length > 125) {
-    b2 = new Buffer([126]);
-    b3 = new Buffer([rawdata.length >>> 8, rawdata.length & 0xff])
+    b2 = Buffer.from([126]);
+    b3 = Buffer.from([rawdata.length >>> 8, rawdata.length & 0xff])
   } else {
-    b2 = new Buffer([rawdata.length]);
-    b3 = new Buffer([]);
+    b2 = Buffer.from([rawdata.length]);
+    b3 = Buffer.from([]);
   }
   return Buffer.concat([b1, b2, b3, rawdata]);
 };
@@ -44,7 +44,7 @@ WSF.DATA_TYPES = {
 WSF.DATA_TYPES.length = 0x10; // array-like object
 WSF.parse = function(frame) {
   // decode frame of WebSocket send(*)
-  var fm = new Buffer(frame);
+  var fm = Buffer.from(frame);
   var ib = 0;
   var b1 = fm[ib]; // [BYTE 1]
   ib++;
