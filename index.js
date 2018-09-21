@@ -179,15 +179,15 @@ server.on("request", function(req, res) {
     srvres.forceHTTPS(req, res, "");
     return;
   }
-  var data = [];
+  var data = Buffer.from([]);
   var filename = F.fixURLtoFileName(req.url);
   if (F.realfilenames.indexOf(filename) >= 0) {
     // File request
   } else if (req.method !== "GET" ||
     req.headers["x-requested-with"] === "XMLHttpRequest") {
     // XHR request
-    req.on("data", function(d) { data.push(d); });
-    req.on("end", function() { srvres.xhr(req, res, Buffer.from(data)); });
+    req.on("data", function(d) { data = Buffer.concat([data, d]); });
+    req.on("end", function() { srvres.xhr(req, res, data); });
     return;
   } else {
     // 404 Not Found
