@@ -846,7 +846,7 @@ X.get = function get(url, f, b) {
 
 // POST Method for Twitter API
 X.post = function post(url, q, f, b, c) {
-  if (!c && !confirm("sure?\n" + url + "?" + O.stringify(q))) {
+  if (!c && !confirm("sure?\n" + url + "?" + String(O.stringify(q)).slice(0, 1e4))) {
     return b && b(false);
   }
   var data, oaq, ctype = "application/x-www-form-urlencoded";
